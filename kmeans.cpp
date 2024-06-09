@@ -15,12 +15,12 @@ struct Point
     int cluster = -1;
 };
 
-// Function to calculate Euclidean distance between two points
-double euclideanDistance(const Point &a, const Point &b)
+// Function to calculate Manhattan distance between two points
+double MD(const Point &a, const Point &b)
 {
     double dx = a.x - b.x;
     double dy = a.y - b.y;
-    return sqrt(dx * dx + dy * dy);
+    return abs(dx) + abs(dy);
 }
 
 // Comparison functions
@@ -75,7 +75,7 @@ int main()
             int closest_center = -1;                             // initialize the closest center
             for (unsigned int i = 0; i < k; ++i)
             {
-                double distance = euclideanDistance(point, centers[i]);
+                double distance = MD(point, centers[i]);
                 if (distance < min_distance)
                 {
                     min_distance = distance;
