@@ -396,6 +396,32 @@ Die* readDie(ifstream& file){
     int x1, y1, x2, y2;
     iss >> x1 >> y1 >> x2 >> y2;
     Die* die = new Die(x1, y1, x2, y2);  // 在堆上创建 Die 对象
+    getline(file, line);
+    istringstream iss(line);
+    string s;
+    int num;
+    iss >> s >> num;
+    for(int i = 0; i < num; i++){
+        getline(file, line);
+        istringstream iss(line);
+        string p,name;
+        int x,y;
+        iss >> p >> name >> x >> y;
+        Pin pin(name,x,y);
+        die->AddInput(pin);        
+    }
+    getline(file, line);
+    istringstream iss(line);
+    iss >> s >> num;
+    for(int i = 0; i < num; i++){
+        getline(file, line);
+        istringstream iss(line);
+        string p,name;
+        int x,y;
+        iss >> p >> name >> x >> y;
+        Pin pin(name,x,y);
+        die->AddInput(pin);        
+    }
     return die;
 }
 
