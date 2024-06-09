@@ -9,5 +9,16 @@
 | 繳交書面 | 2024.06.21 |
 
 ## 題目說明
+### 規則
 - 每一個 cell 絕對不能重疊
-- 一格一格的東西叫做 pin，每個 pin 被 cell 所覆蓋的面積不能超過 BinMaxUtil （每一個 pin 都有一樣的 BinMaxUtil）
+- 一格一格的東西叫做 pin，每個 pin 被 cell 所覆蓋的面積不能超過 BinMaxUtil （每一個 pin 都有一樣的 BinMaxUtil），不然的話 D 會 +1，權重是 lambda
+
+### Input Data
+#### Weight factors for cost metrics
+#### Die size and input output ports
+#### Cell library and flip-flops library information
+#### A cell placement result with flip-flops cells
+#### Max placement utilization ratio per uniform bin
+#### Netlist
+#### Timing slack and delay information
+#### Power information
