@@ -15,6 +15,21 @@
 
 ### Input Data
 #### Weight factors for cost metrics
+𝛼, 𝛽, 𝛾, and 𝜆 values
+_Syntax_
+```
+Alpha <alphaValue>
+Beta <betaValue>
+Gamma <gammaValue>
+Lambda <lambdaValue>
+```
+_Example_
+```
+Alpha 1
+Beta 5
+Gamma 5
+Lambda 10
+```
 #### Die size and input output ports
 #### Cell library and flip-flops library information
 #### A cell placement result with flip-flops cells
