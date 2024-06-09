@@ -38,6 +38,10 @@ int SFFN(int &SFFN, int Q_delay_diff, int displacement_delay, int WLQ_diff, int 
     return (SFFN + Q_delay_diff + displacement_delay * WLQ_diff + displacement_delay * WLD_diff);
 }
 
+// 要針對不同clk的ff進行clustering，要先分類
+// 決定換哪種ff要用 cost function 決定
+// 最後解決overlapping 和 bin utilization 的問題
+
 int main()
 {
     // flip flop list
