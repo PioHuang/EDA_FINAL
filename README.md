@@ -15,7 +15,7 @@
 
 ### Input Data
 #### Weight factors for cost metrics
-𝛼, 𝛽, 𝛾, and 𝜆 values
+𝛼, 𝛽, 𝛾, and 𝜆 values\
 _Syntax_
 ```
 Alpha <alphaValue>
