@@ -42,6 +42,8 @@ int main()
     //-----
 
     // Reading coordinates of points
+    // Assuming input for k, t, and points is done somewhere here
+    // Example: k = 3, t = 10, points.push_back({x, y});
 
     // Finding bounding box of points
     auto [min_x_it, max_x_it] = std::minmax_element(points.begin(), points.end(), compareX);
@@ -68,7 +70,7 @@ int main()
     // Loop for the number of iterations
     for (unsigned int iter = 0; iter < t; ++iter)
     {
-        // Assign points to the nearest center 歸類
+        // Assign points to the nearest center
         for (auto &point : points)
         {
             double min_distance = numeric_limits<double>::max(); // initialize to max value
@@ -105,6 +107,20 @@ int main()
                 centers[i].y = sum_y[i] / count[i];
             }
         }
+    }
+
+    // Access the coordinates of the centers and create them as new points
+    vector<Point> center_points;
+    for (const auto &center : centers)
+    {
+        center_points.push_back({center.x, center.y, -1});
+    }
+
+    // Output the centers for verification
+    cout << "Centers:\n";
+    for (const auto &center : center_points)
+    {
+        cout << "Center at (" << center.x << ", " << center.y << ")\n";
     }
 
     return 0;
