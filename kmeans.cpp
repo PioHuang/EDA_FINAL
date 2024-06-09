@@ -32,6 +32,11 @@ bool compareY(const Point &a, const Point &b)
 {
     return a.y < b.y;
 }
+// nth ff negative slack, need to sum all of them up
+int SFFN(int &SFFN, int Q_delay_diff, int displacement_delay, int WLQ_diff, int WLD_diff)
+{
+    return (SFFN + Q_delay_diff + displacement_delay * WLQ_diff + displacement_delay * WLD_diff);
+}
 
 int main()
 {
