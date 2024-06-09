@@ -26,7 +26,7 @@ using namespace std;
 
 int alpha;      //coefficient for the total negative slack of the flip-flop.
 int beta;       //coefficient for total power of the flip-flop.
-double gamma;      //coefficient for total area of the flip-flop.
+double Gamma;      //coefficient for total area of the flip-flop.
 int lambda;     //coefficient for # of of bins that violates the utilization rate threshold.
 
 
@@ -118,7 +118,7 @@ public:
     }
 
     bool Onsite(){
-
+        return 0; 
     }
 
     void AddRow(int x,int y,int w, int h, int num){
@@ -365,34 +365,36 @@ ifstream openFile(const string& filename) {
 
 void readABGL(ifstream& file){
     string line;
-    
     getline(file, line);
     istringstream iss(line);
     string str;
     int i;
+    double j;
+    
+    // 读取 alpha
     iss >> str >> i;
     alpha = i;
-    
+
+    // 读取 beta
     getline(file, line);
-    istringstream iss(line);
-    string str;
-    int i;
+    iss.str(line); // 重置 iss 的内容
+    iss.clear();   // 清除错误标志位
     iss >> str >> i;
     beta = i;
-    
-    getline(file, line);
-    istringstream iss(line);
-    string str;
-    double i;
-    iss >> str >> i;
-    gamma = i;
 
+    // 读取 Gamma
     getline(file, line);
-    istringstream iss(line);
-    string str;
-    int i;
+    iss.str(line); // 重置 iss 的内容
+    iss.clear();   // 清除错误标志位
+    iss >> str >> j;
+    Gamma = j;
+
+    // 读取 lambda
+    getline(file, line);
+    iss.str(line); // 重置 iss 的内容
+    iss.clear();   // 清除错误标志位
     iss >> str >> i;
-    lambda = i;   
+    lambda = i; 
 }
 
 Die* readDie(ifstream& file){
@@ -403,7 +405,8 @@ Die* readDie(ifstream& file){
     iss >> x1 >> y1 >> x2 >> y2;
     Die* die = new Die(x1, y1, x2, y2);  // 在堆上创建 Die 对象
     getline(file, line);
-    istringstream iss(line);
+    iss.str(line); // 重置 iss 的内容
+    iss.clear();   // 清除错误标志位
     string s;
     int num;
     iss >> s >> num;
@@ -417,7 +420,8 @@ Die* readDie(ifstream& file){
         die->AddInput(pin);        
     }
     getline(file, line);
-    istringstream iss(line);
+    iss.str(line); // 重置 iss 的内容
+    iss.clear();   // 清除错误标志位
     iss >> s >> num;
     for(int i = 0; i < num; i++){
         getline(file, line);
