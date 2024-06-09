@@ -15,6 +15,7 @@
 #include <fstream> 
 #include <sstream> // 确保包含 <sstream> 头文件
 #include <algorithm> // 包含 std::find, 用來vector find
+#include <unordered_map>
 
 
 
@@ -240,23 +241,25 @@ class FFlib{    //Cell library
 
 public:
 
-    void AddFF(const FlipFlop& ff) {
-        fflist.push_back(ff);
-         
+    void AddFF(const FlipFlop& ff, string name) {
+        fflist[name] = ff;
     }
 
-    FlipFlop Find(string& name){  //這一邊應該是取值，因為我要複製一整份過去
-        for(int i=0; i < fflist.size(); i++){
-            if (name == fflist[i].GetName()){
-                return fflist[i];
-            }
+    bool Find(string& name){  //這一邊應該是取值，因為我要複製一整份過去
+        if(fflist.find(name) != fflist.end()){
+            return 1;
         }
-        throw std::runtime_error("FlipFlop not found");
+        else
+            return 0;
+    }
+
+    FlipFlop Get(string& name){  //這一邊應該是取值，因為我要複製一整份過去
+        return fflist[name];
     }
 
 private:  
 
-    vector<FlipFlop> fflist;
+    unordered_map<string,FlipFlop> fflist;
 
 
 };
@@ -265,22 +268,25 @@ class Gatelib{
 
 public: 
     
-    void AddGate(const Gate& gate) {
-        gatelist.push_back(gate);    
+    void  AddGate(const Gate& gate, string name){
+        gatelist[name] = gate;
     }
 
-    Gate Find(string& name) const {
-        for(int i = 0; i < gatelist.size(); i++){
-            if(name == gatelist[i].GetName()){
-                return gatelist[i];
-            }
+    bool Find(string& name){  //這一邊應該是取值，因為我要複製一整份過去
+        if(gatelist.find(name) != gatelist.end()){
+            return 1;
         }
-        throw std::runtime_error("Gate not found");
+        else
+            return 0;
+    }
+
+    Gate Get(string& name){  //這一邊應該是取值，因為我要複製一整份過去
+        return gatelist[name];
     }
 
 private:  
 
-    vector<Gate> gatelist;
+    unordered_map<string,Gate> gatelist;
 
 };
 
@@ -309,11 +315,11 @@ class Instance{
 public:    
     Instance(string& name, string cellname, int x, int y, FFlib& fflib)
     : name(name), cell_name(cellname), x(x), y(y), slack(0) {
-        instance_ff = fflib.Find(cell_name);
+        instance_ff = fflib.Get(cell_name);
     }
     Instance(string& name, string cellname, int x, int y, Gatelib& gatelib)
     : name(name), cell_name(cellname), x(x), y(y), slack(0) {
-        instance_gate = gatelib.Find(cell_name);
+        instance_gate = gatelib.Get(cell_name);
     }
 
     void FF_Connect(string pin_name, int net){ //把元件的pin和net連起來
@@ -352,7 +358,7 @@ private:
 ifstream openFile(const string& filename) {
     ifstream file(filename);
     if (!file.is_open()) {
-        cerr << "Error: Could not open the file " << filename << endl;
+        throw runtime_error("Error: Could not open the file " + filename);
     }
     return file;
 }
@@ -425,8 +431,7 @@ Die* readDie(ifstream& file){
     return die;
 }
 
-
-void readLines(ifstream& file, FFlib& fflib, Gatelib& gatelib) {
+void readLines(ifstream& file, FFlib& fflib, Gatelib& gatelib, unordered_map<string, Instance*>& Instance_map) {
     string line;
     
     while (getline(file, line)) {
@@ -442,13 +447,13 @@ void readLines(ifstream& file, FFlib& fflib, Gatelib& gatelib) {
             for(int i = 0; i < pin_num; i++){ //把pin 都放進來
                 getline(file, line);
                 istringstream iss(line);
-                string p,name;
+                string p,n;
                 int x,y;
-                iss >> p >> name >> x >> y;
-                Pin pin(name,x,y);
+                iss >> p >> n >> x >> y;
+                Pin pin(n,x,y);
                 ff.AddPin(pin);
             }
-            fflib.AddFF(ff);
+            fflib.AddFF(ff, name);
         } 
         else if (keyword == "Gate"){
             int width, height, pin_num;
@@ -458,18 +463,37 @@ void readLines(ifstream& file, FFlib& fflib, Gatelib& gatelib) {
             for(int i = 0; i < pin_num; i++){ //把pin 都放進來
                 getline(file, line);
                 istringstream iss(line);
-                string p,name;
+                string p,n;
                 int x,y;
-                iss >> p >> name >> x >> y;
-                Pin pin(name,x,y);
+                iss >> p >> n >> x >> y;
+                Pin pin(n,x,y);
                 gate.AddPin(pin);
             }
-            gatelib.AddGate(gate);
+            gatelib.AddGate(gate, name);
         }
         else if (keyword == "NumInstances") {
-        
+            int num;
+            iss >> num;
+            for(int i = 0; i < num ; i++){
+                getline(file, line);
+                istringstream iss(line); 
+                string s,name ,type ;
+                int x,y;
+                iss >> s >> name >> type >> x >> y;
+                if(fflib.Find(type) == 1){
+                    Instance* instance = new Instance(name, type, x, y, fflib);
+                    Instance_map[name] = instance;
+                }
+                else{
+                    Instance* instance = new Instance(name, type, x, y, gatelib);
+                    Instance_map[name] = instance;
+                }
+
+                
+                
+            }        
         }
-        else if (keyword == "NumNeets"){
+        else if (keyword == "NumNets"){
 
         }
         else if (keyword == "BunWidth") {
@@ -501,11 +525,15 @@ void closeFile(std::ifstream& file) {
 
 
 int main(){
-    string file_name;
+
+
+    string file_name = "sampleCase.txt";
     ifstream file = openFile(file_name);
     readABGL(file);
     Die* die = readDie(file);
     FFlib FlipFlop_Library;
     Gatelib Gate_Library;
+    unordered_map<string, Instance*> Instance_map;
+
     return 0;
 }
