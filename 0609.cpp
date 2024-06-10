@@ -125,7 +125,7 @@ struct Row
     Row(int x, int y, int width, int height, int num)
         : x(x), y(y), width(width), height(height), num(num) {}
 };
-
+/*
 class PlacementRows
 { //
 public:
@@ -145,7 +145,7 @@ public:
     void AddRow(int x, int y, int w, int h, int num)
     {
         Row row(x, y, w, h, num);
-        for (int i = 0; i <= placementrows.size(); i++)
+        for (size_t i = 0; i <= placementrows.size(); i++)
         {
             if (x < placementrows[i][0].x)
             {
@@ -156,7 +156,7 @@ public:
             }
             else if (x == placementrows[i][0].x)
             {
-                for (int j = 0; j < placementrows[i].size(); j++)
+                for (size_t j = 0; j < placementrows[i].size(); j++)
                 {
                     if (y < placementrows[i][j].y)
                     {
@@ -182,6 +182,7 @@ public:
     }
     vector<vector<Row>> placementrows;
 };
+*/
 
 class FlipFlop
 {
@@ -221,7 +222,7 @@ public:
         cout << "q_delay = " << q_delay << " ; ";
         cout << endl;
         cout << "Pins:" << endl;
-        for (auto it = pins.begin(); it != pins.end(); it++)
+        for (unordered_map<string, Pin *>::iterator it = pins.begin(); it != pins.end(); it++)
         {
             it->second->print();
         }
@@ -266,7 +267,7 @@ public:
         cout << "pin_num = " << pin_num << " ; ";
         cout << endl;
         cout << "Pins:" << endl;
-        for (auto it = pins.begin(); it != pins.end(); it++)
+        for (unordered_map<string, Pin *>::iterator it = pins.begin(); it != pins.end(); it++)
         {
             it->second->print();
         }
@@ -297,7 +298,7 @@ public:
     void print()
     {
         cout << "Net_name = " << net_name << " ; " << endl;
-        for (auto it = pinlist.begin(); it != pinlist.end(); it++)
+        for (unordered_map<string, Pin *>::iterator it = pinlist.begin(); it != pinlist.end(); it++)
         {
             it->second->print();
         }
@@ -318,7 +319,7 @@ public:
         : name(name), instance_type(instance_type), x(x), y(y), slack(0)
     {
         instance_ff = fflib[instance_type];
-        for (auto it = instance_ff.pins.begin(); it != instance_ff.pins.end(); it++)
+        for (unordered_map<string, Pin *>::iterator it = instance_ff.pins.begin(); it != instance_ff.pins.end(); it++)
         {
             it->second->x += x;
             it->second->y += y;
@@ -356,7 +357,7 @@ public:
         : name(name), instance_type(instance_type), x(x), y(y), slack(0)
     {
         instance_gate = gatelib[instance_type];
-        for (auto it = instance_gate.pins.begin(); it != instance_gate.pins.end(); it++)
+        for (unordered_map<string, Pin *>::iterator it = instance_gate.pins.begin(); it != instance_gate.pins.end(); it++)
         {
             it->second->x += x;
             it->second->y += y;

@@ -1,38 +1,28 @@
-
-全域變數
 Alpha 10
 Beta 10
 Gamma 0.0000002
 Lambda 10
-
-宣告Die
 DieSize 0 0 23475 23280
 NumInput 2
 Input in 8344 22840
 Input clk 0 1970
 NumOutput 1
 Output out 23075 11410
-
-宣告細胞圖書館 
 FlipFlop 1 SVT_FF_1 741 480 3
-Pin D 152 30 
-Pin CLK 494 30 
-Pin Q 38 270 
+Pin D 152 30
+Pin CLK 494 30
+Pin Q 38 270
 FlipFlop 2 SVT_FF_2 798 1960 5
-Pin D0 494 350 
-Pin CLK 95 30 
-Pin Q0 665 30 
-Pin D1 494 510 
-Pin Q1 665 750 
-
-宣告使用到的模組與其對應細胞圖書館
+Pin D0 494 350
+Pin CLK 95 30
+Pin Q0 665 30
+Pin D1 494 510
+Pin Q1 665 750
 NumInstances 4
 Inst reg1 SVT_FF_1 5952 3600 
 Inst reg2 SVT_FF_1 1278 3600 
 Inst reg3 SVT_FF_1 1278 6000 
-Inst reg4 SVT_FF_1 3615 3600 
-
-線的清單
+Inst reg4 SVT_FF_1 3615 3600
 NumNets 6
 Net p0 2
 Pin reg1/Q
@@ -55,17 +45,11 @@ Pin reg4/CLK
 Pin reg3/CLK
 Pin reg2/CLK
 Pin reg1/CLK
-
-宣告Bin參數
 BinWidth 1200
 BinHeight 1200
 BinMaxUtil 25
-
-放置橫列 "PlacementRows <startX> <startY> <siteWidth> <siteHeight> <totalNumOfSites>"
 PlacementRows 480 3600 57 240 395
 PlacementRows 480 6000 57 240 395
-
-時間delay
 DisplacementDelay 0.01
 QpinDelay SVT_FF_1 0.02
 QpinDelay SVT_FF_2 0.06
@@ -73,7 +57,5 @@ TimingSlack reg1 D -0.183134
 TimingSlack reg2 D 0.149378
 TimingSlack reg3 D -0.152106
 TimingSlack reg4 D 0.150923
-
-功率
 GatePower SVT_FF_1 1.4781e+01
 GatePower SVT_FF_2 5.2515e+01
