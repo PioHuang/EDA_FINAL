@@ -12,39 +12,42 @@
 #include <string>
 #include <vector>
 #include <string>
-#include <fstream> 
-#include <sstream> // 确保包含 <sstream> 头文件
+#include <fstream>
+#include <sstream>   // 确保包含 <sstream> 头文件
 #include <algorithm> // 包含 std::find, 用來vector find
-
-
+#include <unordered_map>
 
 using namespace std;
 
-
 //////////////variable intialization////////////////////////////////////////////////////////////////
 
-int alpha;      //coefficient for the total negative slack of the flip-flop.
-int beta;       //coefficient for total power of the flip-flop.
-double gamma;      //coefficient for total area of the flip-flop.
-int lambda;     //coefficient for # of of bins that violates the utilization rate threshold.
+double Alpha;  // coefficient for the total negative slack of the flip-flop.
+double Beta;   // coefficient for total power of the flip-flop.
+double Gamma;  // coefficient for total area of the flip-flop.
+double Lambda; // coefficient for # of of bins that violates the utilization rate threshold.
 
-
-
-struct Pin{
+struct Pin
+{
     string name;
     int x;
     int y;
-    int net;
-    Pin(const string name, int x, int y)
-        : name(name),x(x),y(y) {}
+    string net_name;
+    Pin(string name, int x, int y)
+        : name(name), x(x), y(y) {}
 
-    void ConnectPin(int n){
-        net = n;
+    void ConnectPin(string s)
+    {
+        net_name = s;
     }
 
+    void print()
+    {
+        cout << "pin_name = " << name << " ; x = " << x << " ; y = " << y << " ; net_name = " << net_name << endl;
+    }
 };
 
-struct Die{
+struct Die
+{
     int lowerleft_x;
     int lowerleft_y;
     int upperright_x;
@@ -53,40 +56,55 @@ struct Die{
     int height;
     int input_num;
     int output_num;
-    vector<Pin> input_pins;
-    vector<Pin> output_pins; 
+    unordered_map<string, Pin *> input_pins;
+    unordered_map<string, Pin *> output_pins;
 
     Die(int x1, int y1, int x2, int y2)
-    : lowerleft_x(x1), lowerleft_y(y1), upperright_x(x2), upperright_y(y2) {
-        width = upperright_x-lowerleft_x;
-        height = upperright_y-lowerleft_y;
+        : lowerleft_x(x1), lowerleft_y(y1), upperright_x(x2), upperright_y(y2)
+    {
+        width = upperright_x - lowerleft_x;
+        height = upperright_y - lowerleft_y;
     }
 
-    void AddInput(Pin& pin){
-        input_pins.push_back(pin);
+    void update(int x1, int y1, int x2, int y2)
+    {
+        lowerleft_x = x1;
+        lowerleft_y = y1;
+        upperright_x = x2;
+        upperright_y = y2;
+        width = upperright_x - lowerleft_x;
+        height = upperright_y - lowerleft_y;
     }
 
-    void AddOutput(Pin& pin){
-        output_pins.push_back(pin);
+    void AddInput(string pin_name, Pin *pin)
+    {
+        input_pins[pin_name] = pin;
     }
 
+    void AddOutput(string pin_name, Pin *pin)
+    {
+        output_pins[pin_name] = pin;
+    }
 };
 
-class Bin_map{
+class Bin_map
+{
 
 public:
-    Bin_map(Die& die,int w,int h, int u)
-    : max_util(u){
+    Bin_map(Die &die, int w, int h, int u)
+        : max_util(u)
+    {
         int x = die.width / w + 1;
-        int y = die.height/ h + 1;
-        bin_map = vector<vector<int>> (x, vector<int>(y, 0));
+        int y = die.height / h + 1;
+        bin_map = vector<vector<int>>(x, vector<int>(y, 0));
     }
 
-    void InitUtil(){
-
+    void InitUtil()
+    {
     }
 
-    int CheckUtil(){
+    int CheckUtil()
+    {
         int result = 0;
         return result;
     }
@@ -95,7 +113,8 @@ public:
     vector<vector<int>> bin_map;
 };
 
-struct Row{
+struct Row
+{
     int x;
     int y;
     int width;
@@ -104,408 +123,519 @@ struct Row{
 
     // Constructor to initialize all members
     Row(int x, int y, int width, int height, int num)
-    : x(x), y(y), width(width), height(height), num(num) {}
+        : x(x), y(y), width(width), height(height), num(num) {}
 };
 
-class PlacementRows{ //
+class PlacementRows
+{ //
 public:
-    PlacementRows(int x,int y,int w, int h, int num){
+    PlacementRows(int x, int y, int w, int h, int num)
+    {
         Row row(x, y, w, h, num);
         vector<Row> row_y;
         row_y.push_back(row);
         placementrows.push_back(row_y);
     }
 
-    bool Onsite(){
-
+    bool Onsite()
+    {
+        return 0;
     }
 
-    void AddRow(int x,int y,int w, int h, int num){
+    void AddRow(int x, int y, int w, int h, int num)
+    {
         Row row(x, y, w, h, num);
-        for(int i=0; i <= placementrows.size();i++){
-            if(x < placementrows[i][0].x){
+        for (int i = 0; i <= placementrows.size(); i++)
+        {
+            if (x < placementrows[i][0].x)
+            {
                 vector<Row> row_y;
                 row_y.push_back(row);
-                placementrows.insert(placementrows.begin()+i, row_y);
+                placementrows.insert(placementrows.begin() + i, row_y);
                 break;
             }
-            else if(x == placementrows[i][0].x){
-                for(int j=0;j < placementrows[i].size();j++){
-                    if(y < placementrows[i][j].y){
-                        placementrows[i].insert(placementrows[i].begin()+j,row);
+            else if (x == placementrows[i][0].x)
+            {
+                for (int j = 0; j < placementrows[i].size(); j++)
+                {
+                    if (y < placementrows[i][j].y)
+                    {
+                        placementrows[i].insert(placementrows[i].begin() + j, row);
                         break;
                     }
-                    else if(j+1 == placementrows[i].size()){
+                    else if (j + 1 == placementrows[i].size())
+                    {
                         placementrows[i].push_back(row);
                         break;
-                    }               
+                    }
                 }
                 break;
             }
-            else if(i+1 == placementrows.size()){
+            else if (i + 1 == placementrows.size())
+            {
                 vector<Row> row_y;
                 row_y.push_back(row);
                 placementrows.push_back(row_y);
                 break;
             }
-
         }
     }
     vector<vector<Row>> placementrows;
 };
 
-class FlipFlop{
-    
+class FlipFlop
+{
+
 public:
-    FlipFlop() {// 这里可以添加默认的初始化逻辑
+    FlipFlop()
+    { // 这里可以添加默认的初始化逻辑
         std::cout << "Default constructor called." << std::endl;
     }
 
+    FlipFlop(string &name, int w, int h, int b, int pin_num)
+        : name(name), width(w), height(h), bits(b), pin_num(pin_num), power(0), q_delay(0) {}
 
-    FlipFlop(string& name, int w, int h, int b, int pin_num)
-    : name(name), width(w), height(h), bits(b), pin_num(pin_num),power(0),q_delay(0) {} 
-
-    void AddPin(Pin& pin){
-        pins.push_back(pin);
-    }
-    
-    Pin* FindPin(string& name){ //注意!!我這邊想說應該是取址，這樣才會是改到我instance對應的flipflop的pin
-        for(int i=0; i < pins.size(); i++){
-            if(pins[i].name == name){
-                return &pins[i];
-            }
-        }
-        throw std::runtime_error("Pin not found");
+    void AddPin(string pin_name, Pin *pin)
+    {
+        pins[pin_name] = pin;
     }
 
-    void AddPower(int p){
+    void AddPower(int p)
+    {
         power = p;
     }
 
-    void AddDelay(int d){
+    void AddDelay(int d)
+    {
         q_delay = d;
     }
 
-    string GetName() const {
-        return name;
-    }    
+    void print()
+    {
+        cout << "FlipFlop_type = " << name << " ; ";
+        cout << "width = " << width << " ; ";
+        cout << "height = " << height << " ; ";
+        cout << "bits = " << bits << " ; ";
+        cout << "pin_num = " << pin_num << " ; ";
+        cout << "power = " << power << " ; ";
+        cout << "q_delay = " << q_delay << " ; ";
+        cout << endl;
+        cout << "Pins:" << endl;
+        for (auto it = pins.begin(); it != pins.end(); it++)
+        {
+            it->second->print();
+        }
+    }
 
-private: 
     string name;
     int width;
     int height;
     int bits;
     int pin_num;
-    vector<Pin> pins;
+    unordered_map<string, Pin *> pins;
     int power;
     int q_delay;
-
 };
 
-class Gate{
+class Gate
+{
 public:
-    Gate() {// 这里可以添加默认的初始化逻辑
+    Gate()
+    { // 这里可以添加默认的初始化逻辑
         std::cout << "Default constructor called." << std::endl;
     }
 
-    Gate(string& name, int w, int h, int pin_num)
-    : name(name), width(w), height(h), pin_num(pin_num) {} 
+    Gate(string &name, int w, int h, int pin_num)
+        : name(name), width(w), height(h), pin_num(pin_num) {}
 
-    void AddPin(Pin& pin){
-        pins.push_back(pin);
+    void AddPin(string pin_name, Pin *pin)
+    {
+        pins[pin_name] = pin;
     }
 
-    Pin* FindPin(string& name){
-        for(int i=0; i < pins.size(); i++){
-            if(pins[i].name == name){
-                return &pins[i];
-            }
-        }
-        throw std::runtime_error("Pin not found");
-    }
-
-    string GetName() const {
+    string GetName() const
+    {
         return name;
     }
 
-private: 
+    void print()
+    {
+        cout << "Gate_type = " << name << " ; ";
+        cout << "width = " << width << " ; ";
+        cout << "height = " << height << " ; ";
+        cout << "pin_num = " << pin_num << " ; ";
+        cout << endl;
+        cout << "Pins:" << endl;
+        for (auto it = pins.begin(); it != pins.end(); it++)
+        {
+            it->second->print();
+        }
+    }
+
     string name;
     int width;
     int height;
     int pin_num;
-    vector<Pin> pins;
+    unordered_map<string, Pin *> pins;
 };
 
-class FFlib{    //Cell library
-
+class Net
+{
 public:
-
-    void AddFF(const FlipFlop& ff) {
-        fflist.push_back(ff);
-         
+    Net(string net_name, int pin_num)
+    {
+        this->net_name = net_name;
+        this->pin_num = pin_num;
     }
 
-    FlipFlop Find(string& name){  //這一邊應該是取值，因為我要複製一整份過去
-        for(int i=0; i < fflist.size(); i++){
-            if (name == fflist[i].GetName()){
-                return fflist[i];
-            }
-        }
-        throw std::runtime_error("FlipFlop not found");
-    }
-
-private:  
-
-    vector<FlipFlop> fflist;
-
-
-};
-
-class Gatelib{
-
-public: 
-    
-    void AddGate(const Gate& gate) {
-        gatelist.push_back(gate);    
-    }
-
-    Gate Find(string& name) const {
-        for(int i = 0; i < gatelist.size(); i++){
-            if(name == gatelist[i].GetName()){
-                return gatelist[i];
-            }
-        }
-        throw std::runtime_error("Gate not found");
-    }
-
-private:  
-
-    vector<Gate> gatelist;
-
-};
-
-class Netlist{  
-public: 
-    Netlist(int num){
-        net_num = num;
-        netlist.resize(net_num); // 创建包含 num_net 个空的 vector<Pin> 元素的 netlist
-    }
-
-    void AddPin(int net, Pin* pin){
-        netlist[net].push_back(pin);
+    void AddPin(string pin_name, Pin *pin)
+    {
+        pinlist[pin_name] = pin;
+        pin->ConnectPin(net_name);
     };
 
-    vector<Pin*>& FindNet(Pin* pin){ //同一個net的所有pin
-        return netlist[pin->net];
-    }
-
-private:
-    vector<vector<Pin*>> netlist;
-    int net_num;
-
-};
-
-class Instance{ 
-public:    
-    Instance(string& name, string cellname, int x, int y, FFlib& fflib)
-    : name(name), cell_name(cellname), x(x), y(y), slack(0) {
-        instance_ff = fflib.Find(cell_name);
-    }
-    Instance(string& name, string cellname, int x, int y, Gatelib& gatelib)
-    : name(name), cell_name(cellname), x(x), y(y), slack(0) {
-        instance_gate = gatelib.Find(cell_name);
-    }
-
-    void FF_Connect(string pin_name, int net){ //把元件的pin和net連起來
-        Pin* pin = instance_ff.FindPin(pin_name);
-        if (pin != nullptr) {
-            pin->ConnectPin(net);
-        } 
-    }
-
-    void Gate_Connect(string pin_name, int net){
-        Pin* pin = instance_gate.FindPin(pin_name);
-        if (pin != nullptr) {
-            pin->ConnectPin(net);
+    void print()
+    {
+        cout << "Net_name = " << net_name << " ; " << endl;
+        for (auto it = pinlist.begin(); it != pinlist.end(); it++)
+        {
+            it->second->print();
         }
     }
 
-private:
+    unordered_map<string, Pin *> pinlist;
+    int pin_num;
+    string net_name;
+};
+
+unordered_map<string, FlipFlop> fflib;
+unordered_map<string, Gate> gatelib;
+
+class InstanceF
+{
+public:
+    InstanceF(string name, string instance_type, int x, int y)
+        : name(name), instance_type(instance_type), x(x), y(y), slack(0)
+    {
+        instance_ff = fflib[instance_type];
+        for (auto it = instance_ff.pins.begin(); it != instance_ff.pins.end(); it++)
+        {
+            it->second->x += x;
+            it->second->y += y;
+        }
+    }
+
+    void FF_Connect(string pin_name, string net_name)
+    { // 把元件的pin和net連起來
+        Pin *pin = instance_ff.pins[pin_name];
+        if (pin != nullptr)
+        {
+            pin->ConnectPin(net_name);
+        }
+    }
+
+    void print()
+    {
+        cout << "Instance_name = " << name << " ; FlipFlop ; ";
+        instance_ff.print();
+    }
+
     string name;
-    string cell_name;
-    FlipFlop instance_ff; //是這個?
-    Gate instance_gate;        
-    //FlipFlop& instance_ff;  //還是這個?
-    //Gate& instance_gate;
+    string instance_type;
+    FlipFlop instance_ff; // 是這個?
     int x;
     int y;
     int slack;
     int cluster;
-    
 };
 
+class InstanceG
+{
+public:
+    InstanceG(string name, string instance_type, int x, int y)
+        : name(name), instance_type(instance_type), x(x), y(y), slack(0)
+    {
+        instance_gate = gatelib[instance_type];
+        for (auto it = instance_gate.pins.begin(); it != instance_gate.pins.end(); it++)
+        {
+            it->second->x += x;
+            it->second->y += y;
+        }
+    }
+
+    void Gate_Connect(string pin_name, string net_name)
+    {
+        Pin *pin = instance_gate.pins[pin_name];
+        if (pin != nullptr)
+        {
+            pin->ConnectPin(net_name);
+        }
+    }
+
+    void print()
+    {
+        cout << "Instance_name = " << name << " ; Gate ; ";
+        instance_gate.print();
+    }
+
+    string name;
+    string instance_type;
+    Gate instance_gate;
+    int x;
+    int y;
+    int slack;
+};
+
+Die die(0, 0, 0, 0);
+unordered_map<string, InstanceF *> InstanceF_map;
+unordered_map<string, InstanceG *> InstanceG_map;
+unordered_map<string, Net *> Net_map;
 
 //----------------------------------------------------------------
 // Write input functions
 //----------------------------------------------------------------
 
-ifstream openFile(const string& filename) {
+ifstream openFile(const string &filename)
+{
     ifstream file(filename);
-    if (!file.is_open()) {
-        cerr << "Error: Could not open the file " << filename << endl;
+    if (!file.is_open())
+    {
+        throw runtime_error("Error: Could not open the file " + filename);
     }
     return file;
 }
 
-void readABGL(ifstream& file){
+void readLines(ifstream &file)
+{
     string line;
-    
-    getline(file, line);
-    istringstream iss(line);
-    string str;
-    int i;
-    iss >> str >> i;
-    alpha = i;
-    
-    getline(file, line);
-    istringstream iss(line);
-    string str;
-    int i;
-    iss >> str >> i;
-    beta = i;
-    
-    getline(file, line);
-    istringstream iss(line);
-    string str;
-    double i;
-    iss >> str >> i;
-    gamma = i;
 
-    getline(file, line);
-    istringstream iss(line);
-    string str;
-    int i;
-    iss >> str >> i;
-    lambda = i;   
-}
-
-Die* readDie(ifstream& file){
-    string line;
-    getline(file, line);
-    istringstream iss(line);
-    int x1, y1, x2, y2;
-    iss >> x1 >> y1 >> x2 >> y2;
-    Die* die = new Die(x1, y1, x2, y2);  // 在堆上创建 Die 对象
-    getline(file, line);
-    istringstream iss(line);
-    string s;
-    int num;
-    iss >> s >> num;
-    for(int i = 0; i < num; i++){
-        getline(file, line);
-        istringstream iss(line);
-        string p,name;
-        int x,y;
-        iss >> p >> name >> x >> y;
-        Pin pin(name,x,y);
-        die->AddInput(pin);        
-    }
-    getline(file, line);
-    istringstream iss(line);
-    iss >> s >> num;
-    for(int i = 0; i < num; i++){
-        getline(file, line);
-        istringstream iss(line);
-        string p,name;
-        int x,y;
-        iss >> p >> name >> x >> y;
-        Pin pin(name,x,y);
-        die->AddInput(pin);        
-    }
-    return die;
-}
-
-
-void readLines(ifstream& file, FFlib& fflib, Gatelib& gatelib) {
-    string line;
-    
-    while (getline(file, line)) {
+    while (getline(file, line))
+    {
         istringstream iss(line); // #include <sstream> 确保包含 <sstream> 头文件。 iss好用但不知道在幹嘛
         string keyword;
         iss >> keyword;
+        if (keyword == "Alpha")
+        {
+            // 讀取 Alpha
+            iss >> Alpha;
+        }
+        else if (keyword == "Beta")
+        {
+            // 讀取 Beta
+            iss >> Beta;
+        }
+        else if (keyword == "Gamma")
+        {
+            // 讀取 Gamma
+            iss >> Gamma;
+        }
+        else if (keyword == "Lambda")
+        {
+            // 讀取 Lambda
+            iss >> Lambda;
+        }
+        else if (keyword == "DieSize")
+        {
+            int x1, y1, x2, y2;
+            iss >> x1 >> y1 >> x2 >> y2;
+            die.update(x1, y1, x2, y2);
 
-        if (keyword == "FlipFlop") {
+            // NumInput
+            getline(file, line);
+            iss.str(line);
+            iss.clear();
+            string s;
+            int num;
+            iss >> s >> num;
+            for (int i = 0; i < num; i++)
+            {
+                getline(file, line);
+                istringstream iss(line);
+                string p, pin_name;
+                int x, y;
+                iss >> p >> pin_name >> x >> y;
+                Pin *pin = new Pin(pin_name, x, y);
+                die.AddInput(pin_name, pin);
+            }
+
+            // NumOutput
+            getline(file, line);
+            iss.str(line);
+            iss.clear();
+            iss >> s >> num;
+            for (int i = 0; i < num; i++)
+            {
+                getline(file, line);
+                istringstream iss(line);
+                string p, pin_name;
+                int x, y;
+                iss >> p >> pin_name >> x >> y;
+                Pin *pin = new Pin(pin_name, x, y);
+                die.AddOutput(pin_name, pin);
+            }
+        }
+        else if (keyword == "FlipFlop")
+        {
             int width, height, bits, pin_num;
             string name;
             iss >> bits >> name >> width >> height >> pin_num;
             FlipFlop ff(name, width, height, bits, pin_num);
-            for(int i = 0; i < pin_num; i++){ //把pin 都放進來
+            for (int i = 0; i < pin_num; i++)
+            { // 把pin 都放進來
                 getline(file, line);
                 istringstream iss(line);
-                string p,name;
-                int x,y;
-                iss >> p >> name >> x >> y;
-                Pin pin(name,x,y);
-                ff.AddPin(pin);
+                string p, pin_name;
+                int x, y;
+                iss >> p >> pin_name >> x >> y;
+                Pin *pin_ptr = new Pin(pin_name, x, y);
+                ff.AddPin(pin_name, pin_ptr);
             }
-            fflib.AddFF(ff);
-        } 
-        else if (keyword == "Gate"){
+            fflib[name] = ff;
+        }
+        else if (keyword == "Gate")
+        {
             int width, height, pin_num;
-            string name; 
-            iss >> name >> width >> height >> pin_num; 
+            string name;
+            iss >> name >> width >> height >> pin_num;
             Gate gate(name, width, height, pin_num);
-            for(int i = 0; i < pin_num; i++){ //把pin 都放進來
+            for (int i = 0; i < pin_num; i++)
+            { // 把pin 都放進來
                 getline(file, line);
                 istringstream iss(line);
-                string p,name;
-                int x,y;
-                iss >> p >> name >> x >> y;
-                Pin pin(name,x,y);
-                gate.AddPin(pin);
+                string p, pin_name;
+                int x, y;
+                iss >> p >> pin_name >> x >> y;
+                Pin *pin_ptr = new Pin(pin_name, x, y);
+                gate.AddPin(pin_name, pin_ptr);
             }
-            gatelib.AddGate(gate);
+            gatelib[name] = gate;
         }
-        else if (keyword == "NumInstances") {
-        
+        else if (keyword == "NumInstances")
+        {
+            int num;
+            iss >> num;
+            for (int i = 0; i < num; i++)
+            {
+                getline(file, line);
+                istringstream iss(line);
+                string s, name, instance_type;
+                int x, y;
+                iss >> s >> name >> instance_type >> x >> y;
+                if (fflib.find(instance_type) != fflib.end())
+                { // 他是 flip flop
+                    InstanceF_map[name] = new InstanceF(name, instance_type, x, y);
+                }
+                else
+                { // 他是 gate
+                    InstanceG_map[name] = new InstanceG(name, instance_type, x, y);
+                }
+            }
         }
-        else if (keyword == "NumNeets"){
+        else if (keyword == "NumNets")
+        {
+            int num;
+            iss >> num;
+            for (int i = 0; i < num; i++)
+            {
+                getline(file, line);
+                istringstream iss(line);
+                string s, net_name;
+                int pin_num;
+                iss >> s >> net_name >> pin_num;
+                Net *net = new Net(net_name, pin_num);
+                for (int j = 0; j < pin_num; j++)
+                {
+                    getline(file, line);
+                    istringstream iss(line);
+                    string t, pin_location;
+                    iss >> t >> pin_location;
+                    // pin_location 有可能會是 "reg1/Q" 這樣，也有可能是 "clk" 這樣
+                    // 前者是接在 instance (flip flop 或者是 gate) 的，後者是 die 的 input 或者 output 的
 
-        }
-        else if (keyword == "BunWidth") {
+                    Pin *pin_ptr;
+                    if (pin_location.find('/') != std::string::npos)
+                    { // found
+                        // pin_location 會像是 "reg1/Q" 這樣，而我們要把它分開成 instance_name = "reg1" , pin_name = "Q"
+                        string instance_name, pin_name;
+                        stringstream ss(pin_location);
+                        getline(ss, instance_name, '/');
+                        getline(ss, pin_name, '/');
+                        // 完成 pin_location 的分割！
 
+                        // 找到 pin_ptr
+                        if (InstanceF_map.find(instance_name) != InstanceF_map.end())
+                        { // 他是 Flip flop
+                            pin_ptr = InstanceF_map[instance_name]->instance_ff.pins[pin_name];
+                        }
+                        else
+                        { // 他是 Gate
+                            pin_ptr = InstanceG_map[instance_name]->instance_gate.pins[pin_name];
+                        }
+                    }
+                    else
+                    {
+                        // pin_location 會像是 "clk" 這樣
+                        if (die.input_pins.find(pin_location) != die.input_pins.end())
+                        { // 他是 input pins
+                            pin_ptr = die.input_pins[pin_location];
+                        }
+                        else
+                        { // 他是 output pins
+                            pin_ptr = die.output_pins[pin_location];
+                        }
+                    }
+                    net->AddPin(pin_location, pin_ptr);
+                }
+                Net_map[net_name] = net;
+            }
         }
-        else if(keyword == "PlacementRows"){
-
+        else if (keyword == "BunWidth")
+        {
         }
-        else if(keyword == "DisplacementDelay"){
-
+        else if (keyword == "PlacementRows")
+        {
         }
-        else if(keyword == "QpinDelay"){
-
+        else if (keyword == "DisplacementDelay")
+        {
         }
-        else if(keyword == "TimingSlack"){
-
+        else if (keyword == "QpinDelay")
+        {
         }
-        else if(keyword == "GatePower"){
-
+        else if (keyword == "TimingSlack")
+        {
+        }
+        else if (keyword == "GatePower")
+        {
         }
     }
 }
 
-void closeFile(std::ifstream& file) {
-    if (file.is_open()) {
+void closeFile(std::ifstream &file)
+{
+    if (file.is_open())
+    {
         file.close();
     }
 }
 
+int main()
+{
 
-int main(){
-    string file_name;
+    string file_name = "sampleCase.txt";
     ifstream file = openFile(file_name);
-    readABGL(file);
-    Die* die = readDie(file);
-    FFlib FlipFlop_Library;
-    Gatelib Gate_Library;
+
+    // readABGL(file);
+    // Die* die = readDie(file);
+    cout << "Start readLines...\n";
+    readLines(file);
+
+    cout << "YA" << endl;
+    cout << Alpha << " " << Beta << " " << Gamma << " " << Lambda << endl;
+    cout << die.lowerleft_x << " " << die.lowerleft_y << " " << die.width << " " << die.height << endl;
+    die.input_pins["in"]->print();
+    die.output_pins["out"]->print();
+    fflib["SVT_FF_2"].print();
+    InstanceF_map["reg1"]->print();
+    Net_map["p0"]->print();
     return 0;
 }
