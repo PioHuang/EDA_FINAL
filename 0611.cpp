@@ -53,38 +53,6 @@ struct Pin
     }
 };
 
-struct Signal
-{
-    string signal_name;
-    Pin *d_pin;
-    Net *q_net;
-    Pin *clk_pin;
-
-    Signal(string name, Pin *d, Net *q, Pin *clk)
-        : signal_name(name), d_pin(d), q_net(q), clk_pin(clk) {}
-
-    void print()
-    {
-        cout << "signal_name = " << signal_name << " ; ";
-        cout << "d_pin = " << d_pin->name << " ; ";
-        cout << "q_net = " << q_net->net_name << " ; ";
-        cout << "clk_pin = " << clk_pin->name << " ; ";
-        cout << endl;
-    }
-};
-
-struct SpringNode
-{
-    string springnode_name;
-    vector<SpringNode *> springnode_list; // adjaceny list of each node
-    double x, y;
-    // vector<double> force(2,0.0);
-    int cluster;
-
-    SpringNode(string name, double x, double y)
-        : springnode_name(name), x(x), y(y) {}
-};
-
 //----------------------------------------------------------------
 // Map of the DIE >_<
 //----------------------------------------------------------------
@@ -515,6 +483,38 @@ unordered_map<string, InstanceF *> InstanceF_map;
 unordered_map<string, InstanceG *> InstanceG_map;
 unordered_map<string, Net *> Net_map;
 
+struct Signal
+{
+    string signal_name;
+    Pin *d_pin;
+    Net *q_net;
+    Pin *clk_pin;
+
+    Signal(string name, Pin *d, Net *q, Pin *clk)
+        : signal_name(name), d_pin(d), q_net(q), clk_pin(clk) {}
+
+    void print()
+    {
+        cout << "signal_name = " << signal_name << " ; ";
+        cout << "d_pin = " << d_pin->name << " ; ";
+        cout << "q_net = " << q_net->net_name << " ; ";
+        cout << "clk_pin = " << clk_pin->name << " ; ";
+        cout << endl;
+    }
+};
+
+struct SpringNode
+{
+    string springnode_name;
+    vector<SpringNode *> springnode_list; // adjaceny list of each node
+    double x, y;
+    // vector<double> force(2,0.0);
+    int cluster;
+
+    SpringNode(string name, double x, double y)
+        : springnode_name(name), x(x), y(y) {}
+};
+
 //----------------------------------------------------------------
 // Write input functions
 //----------------------------------------------------------------
@@ -913,7 +913,7 @@ void priority_map_formulation()
     }
 }
 // 會回傳 所有的 cluster points, 可以存取每個 cluster 的成員, cluster size
-vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode> SpringNodeMap)
+vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode> SpringNodeMap, int threshold)
 {
     // Finding bounding box of points
     double min_x = numeric_limits<double>::max();
@@ -987,6 +987,32 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
             }
         }
     }
+
+    // Check for oversized clusters and handle reclustering
+    vector<Point> new_centers;
+    for (auto &center : centers)
+    {
+        if (center.cluster_size > threshold)
+        {
+            unordered_map<string, SpringNode> sub_map;
+            for (auto member : center.cluster_members)
+            {
+                sub_map[member->springnode_name] = *member;
+            }
+            // Perform reclustering on the sub_map
+            vector<Point> reclustered_centers = cluster_alg(k_means, iterations, sub_map, threshold);
+            // Collect the new centers for merging
+            new_centers.insert(new_centers.end(), reclustered_centers.begin(), reclustered_centers.end());
+        }
+        else
+        {
+            new_centers.push_back(center);
+        }
+    }
+
+    // Replace the old centers with the new set of centers
+    centers = new_centers;
+
     // now we have cluster centers and each of its members
     cout << "Centers:\n";
     for (int i = 0; i < k_means; i++)
