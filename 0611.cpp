@@ -28,21 +28,31 @@ double Alpha;  // coefficient for the total negative slack of the flip-flop.
 double Beta;   // coefficient for total power of the flip-flop.
 double Gamma;  // coefficient for total area of the flip-flop.
 double Lambda; // coefficient for # of of bins that violates the utilization rate threshold.
-double Displacementdelay;
+double Displacement_delay;
+
+double k_spring = 1;
+int spring_iter_count = 100;
+double damping_coefficient = 0.8;  // v' = v * damping_coefficient + F/m * dt
 
 struct Pin
 {
     string name;
-    int x;
-    int y;
+    double x;
+    double y;
     string net_name;
+    vector<string> springnode_names;
     bool is_input;
-    Pin(string name, int x, int y, bool is_input)
+    Pin(string name, double x, double y, bool is_input)
         : name(name), x(x), y(y), is_input(is_input) {}
 
     void ConnectPin(string s)
     {
         net_name = s;
+    }
+
+    void connect_springnode(string s)
+    {
+        springnode_names.push_back(s);
     }
 
     void print()
@@ -59,25 +69,25 @@ struct Pin
 
 struct Die
 {
-    int lowerleft_x;
-    int lowerleft_y;
-    int upperright_x;
-    int upperright_y;
-    int width;
-    int height;
+    double lowerleft_x;
+    double lowerleft_y;
+    double upperright_x;
+    double upperright_y;
+    double width;
+    double height;
     int input_num;
     int output_num;
     unordered_map<string, Pin *> input_pins;
     unordered_map<string, Pin *> output_pins;
 
-    Die(int x1, int y1, int x2, int y2)
+    Die(double x1, double y1, double x2, double y2)
         : lowerleft_x(x1), lowerleft_y(y1), upperright_x(x2), upperright_y(y2)
     {
         width = upperright_x - lowerleft_x;
         height = upperright_y - lowerleft_y;
     }
 
-    void update(int x1, int y1, int x2, int y2)
+    void update(double x1, double y1, double x2, double y2)
     {
         lowerleft_x = x1;
         lowerleft_y = y1;
@@ -107,7 +117,7 @@ public:
     { // 这里可以添加默认的初始化逻辑
         std::cout << "Default Bin_Map called." << std::endl;
     }
-    Bin_Map(int w, int h, double u)
+    Bin_Map(double w, double h, double u)
         : max_util(u)
     {
         width = w;
@@ -145,21 +155,21 @@ public:
     }
 
     double max_util;
-    int width, height;
-    int area;
+    double width, height;
+    double area;
     vector<vector<double>> binmap;
 };
 
 struct Row
 {
-    int x;
-    int y;
-    int width;
-    int height;
+    double x;
+    double y;
+    double width;
+    double height;
     int num;
 
     // Constructor to initialize all members
-    Row(int x, int y, int width, int height, int num)
+    Row(double x, double y, double width, double height, int num)
         : x(x), y(y), width(width), height(height), num(num) {}
 };
 
@@ -184,7 +194,7 @@ public:
         return 0;
     }
 
-    void AddRow(int x, int y, int w, int h, int num)
+    void AddRow(double x, double y, double w, double h, int num)
     {
         Row row(x, y, w, h, num);
         if (placementrows.size() == 0)
@@ -247,7 +257,7 @@ public:
 };
 
 Bin_Map *Bin_map;
-PlacementRows Placementrows;
+PlacementRows Placement_rows;
 
 //----------------------------------------------------------------
 // Instance Library :)
@@ -262,7 +272,7 @@ public:
       // std::cout << "Default FlipFlop called." << std::endl;
     }
 
-    FlipFlop(string &name, int w, int h, int b, int pin_num)
+    FlipFlop(string &name, double w, double h, int b, int pin_num)
         : name(name), width(w), height(h), bits(b), pin_num(pin_num), power(0), q_delay(0) {}
 
     void AddPin(string pin_name, Pin *pin)
@@ -288,8 +298,8 @@ public:
     }
 
     string name;
-    int width;
-    int height;
+    double width;
+    double height;
     int bits;
     int pin_num;
     unordered_map<string, Pin *> pins;
@@ -305,7 +315,7 @@ public:
       // std::cout << "Default Gate called." << std::endl;
     }
 
-    Gate(string &name, int w, int h, int pin_num)
+    Gate(string &name, double w, double h, int pin_num)
         : name(name), width(w), height(h), pin_num(pin_num) {}
 
     void AddPin(string pin_name, Pin *pin)
@@ -333,8 +343,8 @@ public:
     }
 
     string name;
-    int width;
-    int height;
+    double width;
+    double height;
     int pin_num;
     unordered_map<string, Pin *> pins;
 };
@@ -349,7 +359,7 @@ unordered_map<string, Gate> gatelib;
 class InstanceF
 {
 public:
-    InstanceF(string name, string instance_type, int x, int y)
+    InstanceF(string name, string instance_type, double x, double y)
         : name(name), instance_type(instance_type), x1(x), y1(y), slack(0)
     {
         FlipFlop ff = fflib[instance_type];
@@ -394,16 +404,16 @@ public:
     string name;
     string instance_type;
     FlipFlop *instance_ff; // 是這個?
-    int x1, y1;
-    int x2, y2;
-    int slack;
+    double x1, y1;
+    double x2, y2;
+    double slack;
     int cluster;
 };
 // 改
 class InstanceG
 {
 public:
-    InstanceG(string name, string instance_type, int x, int y)
+    InstanceG(string name, string instance_type, double x, double y)
         : name(name), instance_type(instance_type), x1(x), y1(y), slack(0)
     {
         Gate gate = gatelib[instance_type];
@@ -440,9 +450,9 @@ public:
     string name;
     string instance_type;
     Gate *instance_gate;
-    int x1, y1;
-    int x2, y2;
-    int slack;
+    double x1, y1;
+    double x2, y2;
+    double slack;
 };
 
 class Net
@@ -456,25 +466,25 @@ public:
 
     void AddPin(string pin_name, Pin *pin)
     {
-        pinlist[pin_name] = pin;
+        pin_list[pin_name] = pin;
         pin->ConnectPin(net_name);
         if (pin->is_input)
         {
-            input_pin_name = pin_name;
+            input_pin = pin;
         }
     };
 
     void print()
     {
         cout << "Net_name = " << net_name << " ; " << endl;
-        for (auto it = pinlist.begin(); it != pinlist.end(); it++)
+        for (auto it = pin_list.begin(); it != pin_list.end(); it++)
         {
             it->second->print();
         }
     }
 
-    unordered_map<string, Pin *> pinlist;
-    string input_pin_name;
+    unordered_map<string, Pin *> pin_list;
+    Pin* input_pin;
     int pin_num;
     string net_name;
 };
@@ -483,37 +493,287 @@ unordered_map<string, InstanceF *> InstanceF_map;
 unordered_map<string, InstanceG *> InstanceG_map;
 unordered_map<string, Net *> Net_map;
 
-struct Signal
+
+//----------------------------------------------------------------
+// Signal & SpringNode
+//----------------------------------------------------------------
+
+struct Signal 
 {
     string signal_name;
-    Pin *d_pin;
-    Net *q_net;
-    Pin *clk_pin;
+    Pin* d_pin;
+    Pin* q_pin;
+    Net* q_net;
+    Pin* clk_pin;
 
-    Signal(string name, Pin *d, Net *q, Pin *clk)
-        : signal_name(name), d_pin(d), q_net(q), clk_pin(clk) {}
+    Signal(string name, Pin* d, Pin* q, Pin* clk)
+    : signal_name(name), d_pin(d), q_pin(q), clk_pin(clk) {
+        q_net = Net_map[q->net_name];
+    }
 
     void print()
     {
-        cout << "signal_name = " << signal_name << " ; ";
-        cout << "d_pin = " << d_pin->name << " ; ";
-        cout << "q_net = " << q_net->net_name << " ; ";
-        cout << "clk_pin = " << clk_pin->name << " ; ";
+        cout << "signal_name = "<< signal_name << " ; " ;
+        cout << "d_pin from = " << d_pin->net_name << " ; " ;
+        cout << "q_pin to = " << q_net->net_name << " ; " ;
+        cout << "clk_pin = " << clk_pin->net_name << " ; " ;
         cout << endl;
     }
 };
 
-struct SpringNode
-{
-    string springnode_name;
-    vector<SpringNode *> springnode_list; // adjaceny list of each node
-    double x, y;
-    // vector<double> force(2,0.0);
-    int cluster;
+unordered_map<string, Signal*> Signal_map;
 
-    SpringNode(string name, double x, double y)
-        : springnode_name(name), x(x), y(y) {}
+void initialize_Signal_map() {
+    for (auto it = InstanceF_map.begin(); it != InstanceF_map.end(); it++) {
+        InstanceF* instf = it->second;
+
+        // Start finding the clk_pin of the FF
+        Pin* clk_pin = nullptr;
+        for (auto it2 = instf->instance_ff->pins.begin(); it2 != instf->instance_ff->pins.end(); it2++) {
+            Pin* pin = it2->second;
+            if (pin->name[0] == 'c' || pin->name[0] == 'C') {
+                clk_pin = pin;
+                break;
+            }
+        }
+        // cout << "Found clk_pin 's net_name = " << clk_pin->net_name << endl;
+        // Finish finding the clk_pin of the FF
+
+        // Start identifying the signals of the FF
+        for (auto it2 = instf->instance_ff->pins.begin(); it2 != instf->instance_ff->pins.end(); it2++) {
+            Pin* pin = it2->second;
+            if (pin->name[0] == 'D') {  // We find a signal!
+                Pin* d_pin = pin;
+                string d_pin_idx = d_pin->name.substr(1, d_pin->name.length() - 1);
+                Pin* q_pin = d_pin;  // Initialization: In case we did not find the q_pin
+                string q_pin_name = "Q" + d_pin_idx;
+                if (instf->instance_ff->pins.find(q_pin_name)!= instf->instance_ff->pins.end()) {
+                    q_pin = instf->instance_ff->pins[q_pin_name];
+                }
+
+                // Construct the signal
+                string signal_name = instf->name + "/" + d_pin->name + "_" + instf->name + "/" + q_pin->name;
+                Signal* signal = new Signal(signal_name,d_pin,q_pin,clk_pin);
+                Signal_map[signal_name] = signal;
+            }
+        }
+        // Finish identifying the signals of the FF
+    }
+}
+
+void check_Signal_map(int signal_count_limit = 5) {
+    cout << "-----------------------------------------------" << endl;
+    cout << "Checking Signal_map by printing " ;
+    cout << "(at most " << signal_count_limit << ") signals." << endl;
+    int signal_count = 0;
+    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++) {
+        signal_count += 1;
+        it->second->print();
+        if (signal_count == signal_count_limit) {
+            return;
+        }
+    }
+}
+
+struct SpringNode{
+    string springnode_name;
+    unordered_map<string, SpringNode*> adj_list;
+    double x, y;
+    vector<double> force;
+    vector<double> velocity;
+    int cluster;
+    bool is_movable;
+    double mass = 1;
+
+    SpringNode(string name, double x, double y, bool is_movable)
+    : springnode_name(name), x(x), y(y), is_movable(is_movable) {
+        velocity.resize(2);
+        velocity[0] = 0.0;
+        velocity[1] = 0.0;
+        force.resize(2);
+        force[0] = 0.0;
+        force[1] = 0.0;
+    }
+
+    void initialize_velocity(){
+        velocity[0] = 0.0;
+        velocity[1] = 0.0;
+    }
+
+    void update_force(){
+        force[0] = 0, force[1] = 0;
+        for (auto it = adj_list.begin(); it != adj_list.end(); it++) {
+            force[0] += k_spring * (it->second->x - x);
+            force[1] += k_spring * (it->second->y - y);
+        }
+    }
+
+    void update_velocity(){
+        velocity[0] = velocity[0] * damping_coefficient + force[0] / mass;
+        velocity[1] = velocity[1] * damping_coefficient + force[1] / mass;
+    }
+
+    void update_position(){
+        x += velocity[0];
+        y += velocity[1];
+    }
+
+    void print() {
+        cout << "springnode_name = " << springnode_name << " ; " ;
+        cout << "x = " << x << " ; " ;
+        cout << "y = " << y << " ; " ;
+        cout << "movable = " << (is_movable ? "true" : "false") << " ; " ;
+        cout << "adj nodes :" ;
+        for (auto it = adj_list.begin(); it != adj_list.end(); it++) {
+            cout << it->first << " ";
+        }
+        cout << endl;
+    }
 };
+
+unordered_map<string, SpringNode*> SpringNode_map;
+
+void initialize_SpringNode_map() {
+    // SpringNode 分成 3 種
+    // 第 1 種 : Die inputs / outputs
+    // 第 2 種 : Gate pins
+    // 第 3 種 : Signals
+
+    // 第 1-1 種 : Die inputs 
+    for (auto it = die.input_pins.begin(); it != die.input_pins.end(); it++) {
+        SpringNode* springnode = new SpringNode(it->first, it->second->x, it->second->y, false);
+        SpringNode_map[it->first] = springnode;
+        it->second->connect_springnode(it->first);
+    }
+    // 第 1-2 種 : Die outputs 
+    for (auto it = die.output_pins.begin(); it != die.output_pins.end(); it++) {
+        SpringNode* springnode = new SpringNode(it->first, it->second->x, it->second->y, false);
+        SpringNode_map[it->first] = springnode;
+        it->second->connect_springnode(it->first);
+    }
+
+    // 第 2 種 : Gate pins
+    for (auto it = InstanceG_map.begin(); it != InstanceG_map.end(); it++) {
+        InstanceG* gate = it->second;
+        for (auto it2 = gate->instance_gate->pins.begin(); it2 != gate->instance_gate->pins.end(); it2++) {
+            string springnode_name = it->first + "/" + it2->first;
+            SpringNode* springnode = new SpringNode(springnode_name, it2->second->x, it2->second->y, false);
+            SpringNode_map[springnode_name] = springnode;
+            it2->second->connect_springnode(springnode_name);
+        }
+    }
+
+    // 第 3 種 : Signals
+    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++) {
+        string springnode_name = it->first;
+        // Start calculating the position of the signal
+        double signal_x = (it->second->d_pin->x + it->second->q_pin->x + it->second->clk_pin->x) / 3;
+        double signal_y = (it->second->d_pin->y + it->second->q_pin->y + it->second->clk_pin->y) / 3;
+        // Finish calculating the position of the signal
+        SpringNode* springnode = new SpringNode(springnode_name, signal_x, signal_y, true);
+        SpringNode_map[springnode_name] = springnode;
+        it->second->d_pin->connect_springnode(springnode_name);
+        it->second->q_pin->connect_springnode(springnode_name);
+        it->second->clk_pin->connect_springnode(springnode_name);
+    }
+    
+}
+
+void initialize_1node_adj_list(SpringNode* springnode, Pin* d_pin, Pin* q_pin, Pin* clk_pin) {
+    // d_pin
+    if (d_pin != nullptr) {
+        Pin* d_pin_from = Net_map[d_pin->net_name]->input_pin;  
+        string d_pin_springnode_name = d_pin_from->springnode_names[0];
+        springnode->adj_list[d_pin_springnode_name] = SpringNode_map[d_pin_springnode_name];
+    }
+    
+    // q_pin : 會連結到多個 pin ，並且可能會遇到 clk ， 也就是會有多個 SpringNode 連結到它
+    if (q_pin != nullptr)
+    {
+        Net* q_net = Net_map[q_pin->net_name];
+        for (auto it = q_net->pin_list.begin(); it != q_net->pin_list.end(); it++)
+        {
+            Pin* pin = it->second;
+            for (auto springnode_name : pin->springnode_names) {
+                if (pin != q_net->input_pin)
+                {
+                    springnode->adj_list[springnode_name] = SpringNode_map[springnode_name];
+                }
+            }
+        }
+    }
+    
+    // clk_pin
+    if (clk_pin != nullptr) 
+    {
+        Pin* clk_pin_from = Net_map[clk_pin->net_name]->input_pin;
+        string clk_pin_springnode_name = clk_pin_from->springnode_names[0];
+        springnode->adj_list[clk_pin_springnode_name] = SpringNode_map[clk_pin_springnode_name];
+    }
+}
+
+void initialize_adj_list()
+{
+    // SpringNode 分成 3 種
+    // 第 1 種 : Die inputs / outputs
+    // 第 2 種 : Gate pins
+    // 第 3 種 : Signals
+
+    // 第 1-1 種 : Die inputs 
+    for (auto it = die.input_pins.begin(); it != die.input_pins.end(); it++)
+    {
+        initialize_1node_adj_list(SpringNode_map[it->first], nullptr, it->second, nullptr);
+    }
+    cout << "Done initialize_1node_adj_list : Part 1-1" << endl;
+
+    // 第 1-2 種 : Die outputs
+    for (auto it = die.output_pins.begin(); it != die.output_pins.end(); it++)
+    {
+        initialize_1node_adj_list(SpringNode_map[it->first], it->second, nullptr, nullptr);
+    }
+    cout << "Done initialize_1node_adj_list : Part 1-2" << endl;
+
+    // 第 2 種 : Gate pins
+    for (auto it = InstanceG_map.begin(); it != InstanceG_map.end(); it++) {
+        InstanceG* gate = it->second;
+        for (auto it2 = gate->instance_gate->pins.begin(); it2 != gate->instance_gate->pins.end(); it2++) {
+            string springnode_name = it->first + "/" + it2->first;
+            if (it2->first[0] == 'o' || it2->first[0] == 'O') {
+                // 他是 gate 的 output ， 也就是跟 die.input_pins 類似
+                initialize_1node_adj_list(SpringNode_map[springnode_name], nullptr, it2->second, nullptr);
+            } else {
+                // 他是 gate 的 input ， 也就是跟 die.output_pins 類似
+                initialize_1node_adj_list(SpringNode_map[springnode_name], it2->second, nullptr, nullptr);
+            }
+        }
+    }
+    cout << "Done initialize_1node_adj_list : Part 2" << endl;
+
+    // 第 3 種 : Signals
+    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++) {
+        string springnode_name = it->first;
+        initialize_1node_adj_list(SpringNode_map[springnode_name], it->second->d_pin, it->second->q_pin, it->second->clk_pin);
+    }
+    cout << "Done initialize_1node_adj_list : Part 3" << endl;
+}
+
+void check_SpringNode_map(int springnode_count_limit = 5) {
+    cout << "-----------------------------------------------" << endl;
+    cout << "Checking SpringNode_map by printing " ;
+    cout << "(at most " << springnode_count_limit << ") springnodes." << endl;
+    int springnode_count = 0;
+    for (auto it = SpringNode_map.begin(); it != SpringNode_map.end(); it++) {
+        springnode_count += 1;
+        it->second->print();
+        if (springnode_count == springnode_count_limit) {
+            return;
+        }
+    }
+}
+
+void activate_Spring() {
+
+}
 
 //----------------------------------------------------------------
 // Write input functions
@@ -564,7 +824,7 @@ void readLines(ifstream &file)
         }
         else if (keyword == "DieSize")
         {
-            int x1, y1, x2, y2;
+            double x1, y1, x2, y2;
             iss >> x1 >> y1 >> x2 >> y2;
             die.update(x1, y1, x2, y2);
 
@@ -580,7 +840,7 @@ void readLines(ifstream &file)
                 getline(file, line);
                 istringstream iss(line);
                 string p, pin_name;
-                int x, y;
+                double x, y;
                 iss >> p >> pin_name >> x >> y;
                 Pin *pin = new Pin(pin_name, x, y, true);
                 die.AddInput(pin_name, pin);
@@ -596,7 +856,7 @@ void readLines(ifstream &file)
                 getline(file, line);
                 istringstream iss(line);
                 string p, pin_name;
-                int x, y;
+                double x, y;
                 iss >> p >> pin_name >> x >> y;
                 Pin *pin = new Pin(pin_name, x, y, false);
                 die.AddOutput(pin_name, pin);
@@ -604,7 +864,8 @@ void readLines(ifstream &file)
         }
         else if (keyword == "FlipFlop")
         {
-            int width, height, bits, pin_num;
+            double width, height;
+            int bits, pin_num;
             string name;
             iss >> bits >> name >> width >> height >> pin_num;
             FlipFlop ff(name, width, height, bits, pin_num);
@@ -613,7 +874,7 @@ void readLines(ifstream &file)
                 getline(file, line);
                 istringstream iss(line);
                 string p, pin_name;
-                int x, y;
+                double x, y;
                 iss >> p >> pin_name >> x >> y;
                 // 判斷是不是input
                 bool is_input = false;
@@ -630,7 +891,8 @@ void readLines(ifstream &file)
         }
         else if (keyword == "Gate")
         {
-            int width, height, pin_num;
+            double width, height;
+            int pin_num;
             string name;
             iss >> name >> width >> height >> pin_num;
             Gate gate(name, width, height, pin_num);
@@ -639,7 +901,7 @@ void readLines(ifstream &file)
                 getline(file, line);
                 istringstream iss(line);
                 string p, pin_name;
-                int x, y;
+                double x, y;
                 iss >> p >> pin_name >> x >> y;
                 // 判斷是不是input
                 bool is_input = true;
@@ -663,7 +925,7 @@ void readLines(ifstream &file)
                 getline(file, line);
                 istringstream iss(line);
                 string s, name, instance_type;
-                int x, y;
+                double x, y;
                 iss >> s >> name >> instance_type >> x >> y;
                 if (fflib.find(instance_type) != fflib.end())
                 { // 他是 flip flop
@@ -677,6 +939,7 @@ void readLines(ifstream &file)
         }
         else if (keyword == "NumNets")
         {
+            // cout << "Start reading Nets..." << endl;
             int num;
             iss >> num;
             for (int i = 0; i < num; i++)
@@ -686,6 +949,8 @@ void readLines(ifstream &file)
                 string s, net_name;
                 int pin_num;
                 iss >> s >> net_name >> pin_num;
+                // cout << "------------------------------------------------" << endl;
+                // cout << "Read Net " << net_name << endl;
                 Net *net = new Net(net_name, pin_num);
                 for (int j = 0; j < pin_num; j++)
                 {
@@ -693,6 +958,7 @@ void readLines(ifstream &file)
                     istringstream iss(line);
                     string t, pin_location;
                     iss >> t >> pin_location;
+                    // cout << "pin_location = " << pin_location << endl;
                     // pin_location 有可能會是 "reg1/Q" 這樣，也有可能是 "clk" 這樣
                     // 前者是接在 instance (flip flop 或者是 gate) 的，後者是 die 的 input 或者 output 的
 
@@ -736,7 +1002,7 @@ void readLines(ifstream &file)
         else if (keyword == "BinWidth")
         {
             string s;
-            int width, height, maxutil;
+            double width, height, maxutil;
             iss >> width;
             getline(file, line);
             iss.str(line);
@@ -751,35 +1017,36 @@ void readLines(ifstream &file)
         }
         else if (keyword == "PlacementRows")
         {
-            int startX, startY, siteWidth, siteHeight, totalNumOfSites;
+            double startX, startY, siteWidth, siteHeight;
+            int totalNumOfSites;
             iss >> startX >> startY >> siteWidth >> siteHeight >> totalNumOfSites;
-            Placementrows.AddRow(startX, startY, siteWidth, siteHeight, totalNumOfSites);
+            Placement_rows.AddRow(startX, startY, siteWidth, siteHeight, totalNumOfSites);
         }
         else if (keyword == "DisplacementDelay")
         {
-            iss >> Displacementdelay;
+            iss >> Displacement_delay;
         }
         else if (keyword == "QpinDelay")
         {
-            string FFtpye;
+            string FF_type;
             double delay;
-            iss >> FFtpye >> delay;
-            fflib[FFtpye].q_delay = delay;
+            iss >> FF_type >> delay;
+            fflib[FF_type].q_delay = delay;
         }
         else if (keyword == "TimingSlack")
         {
-            string instace_name;
+            string instance_name;
             string pin;
             double slack;
-            iss >> instace_name >> pin >> slack;
-            InstanceF_map[instace_name]->slack = slack;
+            iss >> instance_name >> pin >> slack;
+            InstanceF_map[instance_name]->slack = slack;
         }
         else if (keyword == "GatePower")
         {
-            string FFtpye;
+            string FF_type;
             double power;
-            iss >> FFtpye >> power;
-            fflib[FFtpye].power = power;
+            iss >> FF_type >> power;
+            fflib[FF_type].power = power;
         }
     }
     for (const auto &instancef : InstanceF_map)
@@ -802,8 +1069,11 @@ void closeFile(std::ifstream &file)
 
 void input_check()
 {
-    cout << Alpha << " " << Beta << " " << Gamma << " " << Lambda << endl
-         << "DisplacementDelay = " << Displacementdelay << endl;
+    cout << "Alpha = " << Alpha << endl;
+    cout << "Beta = " << Beta << endl;
+    cout << "Gamma = " << Gamma << endl;
+    cout << "Lambda = " << Lambda << endl;
+    cout << "Displacement_delay = " << Displacement_delay << endl;
     cout << "Die: " << die.lowerleft_x << " " << die.lowerleft_y << " " << die.width << " " << die.height << endl;
     die.input_pins["INPUT5"]->print();    //
     die.output_pins["OUTPUT29"]->print(); //
@@ -820,21 +1090,21 @@ void input_check()
     cout << "-----------------------------------------------\n";
     Bin_map->print();
     cout << "-----------------------------------------------\n";
-    Placementrows.print();
+    Placement_rows.print();
 }
 
 void Put_Inst_Gate_to_Bin()
 {
     for (auto &gate : InstanceG_map)
     {
-        int x1, x2, y1, y2;
+        double x1, x2, y1, y2;
         x1 = gate.second->x1;
         y1 = gate.second->y1;
         x2 = gate.second->x2;
         y2 = gate.second->y2;
-        int bin_pos_x1, bin_pos_y1, bin_pos_x2, bin_pos_y2;
-        int bin_width = Bin_map->width;
-        int bin_height = Bin_map->height;
+        double bin_pos_x1, bin_pos_y1, bin_pos_x2, bin_pos_y2;
+        double bin_width = Bin_map->width;
+        double bin_height = Bin_map->height;
         bin_pos_x1 = x1 / bin_width;
         bin_pos_x2 = x2 / bin_width;
         bin_pos_y1 = y1 / bin_height;
@@ -854,6 +1124,7 @@ void Put_Inst_Gate_to_Bin()
         }
     }
 }
+/*
 //----------------------------------------------------------------
 // Clustering helper functions
 //---------------------------------------------------------------
@@ -1031,6 +1302,7 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
     }
     return centers;
 }
+*/
 
 //----------------------------------------------------------------
 // main
@@ -1038,13 +1310,25 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
 
 int main()
 {
-    string file_name = "testcase1.txt";
+    string file_name = "testcase0.txt";
     ifstream file = openFile(file_name);
     readLines(file);
+    cout << "Finish readLines" << endl;
     Put_Inst_Gate_to_Bin();
-    // Bin_map->binmap[0][0]  = 100;
-    cout << "-----------------------------------------------\n";
-    Bin_map->print();
+    // cout << "-----------------------------------------------\n";
+    // Bin_map->print();
+    // input_check();
+    
+    initialize_Signal_map();
+    cout << "Done initialize_Signal_map" << endl;
+    check_Signal_map();
+
+    initialize_SpringNode_map();
+    cout << "Done initialize_SpringNode_map" << endl;
+
+    initialize_adj_list();
+    cout << "Done initialize_adj_list" << endl;
+    check_SpringNode_map(100);
 
     return 0;
 }
