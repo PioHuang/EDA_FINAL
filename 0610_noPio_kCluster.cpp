@@ -73,16 +73,17 @@ struct Signal
     }
 };
 
-// struct SpringNode{
-//     string springnode_name;
-//     vector<SpringNode*> springnode_list;
-//     double x, y;
-//     vector<double> force(2,0.0);
-//     int cluster;
+struct SpringNode
+{
+    string springnode_name;
+    vector<SpringNode *> springnode_list; // adjaceny list of each node
+    double x, y;
+    // vector<double> force(2,0.0);
+    int cluster;
 
-//     SpringNode(string name, double x, double y)
-//     : springnode_name(name), x(x), y(y) {}
-// }
+    SpringNode(string name, double x, double y)
+        : springnode_name(name), x(x), y(y) {}
+};
 
 //----------------------------------------------------------------
 // Map of the DIE >_<
@@ -857,17 +858,19 @@ void Put_Inst_Gate_to_Bin()
 // Clustering helper functions
 //---------------------------------------------------------------
 // Function to calculate Manhattan distance between two points
-// center points
+// center points 質心點 每個質心點存屬於他的spring nodes
 struct Point
 {
     double x, y;
+    vector<SpringNode *> cluster_members; // 指向所有cluster members
     int cluster = -1;
+    int cluster_size = 0;
 };
 
-double MD(const SpringNode *a, const SpringNode &b)
+double MD(const SpringNode &a, const Point &b)
 {
-    double dx = a->x - b.x;
-    double dy = a->y - b.y;
+    double dx = a.x - b.x;
+    double dy = a.y - b.y;
     return abs(dx) + abs(dy);
 }
 
@@ -909,6 +912,99 @@ void priority_map_formulation()
         sort(i->second.begin(), i->second.end());
     }
 }
+// vector<Point> clusters; // 回傳每個cluster center of mass point
+vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode> SpringNodeMap)
+{
+    // Finding bounding box of points
+    double min_x = numeric_limits<double>::max();
+    double max_x = 0.0;
+    double min_y = numeric_limits<double>::max();
+    double max_y = 0.0;
+    for (auto i = SpringNodeMap.begin(); i != SpringNodeMap.end(); i++)
+    {
+        if (i->second.x < min_x)
+            min_x = i->second.x;
+        if (i->second.x > max_x)
+            max_x = i->second.x;
+        if (i->second.y < min_y)
+            min_y = i->second.y;
+        if (i->second.y > max_y)
+            max_y = i->second.y;
+    }
+
+    // Initializing centers with random coordinates within bounding box
+    vector<Point> centers(k_means);
+    uniform_real_distribution<> dis_center_x(min_x, max_x);
+    uniform_real_distribution<> dis_center_y(min_y, max_y);
+    random_device rd;
+    mt19937 gen(rd());
+    for (unsigned int i = 0; i < k_means; i++)
+    {
+        centers[i].x = dis_center_x(gen);
+        centers[i].y = dis_center_y(gen);
+    }
+
+    // Loop for the number of iterations
+    for (unsigned int iter = 0; iter < iterations; iter++)
+    {
+        // Assign points to the nearest center
+        for (auto j = SpringNodeMap.begin(); j != SpringNodeMap.end(); j++) // iterate through each spring node
+        {
+            double min_distance = numeric_limits<double>::max(); // initialize to max value
+            int closest_center = -1;                             // initialize the closest center
+            for (unsigned int i = 0; i < k_means; i++)           // cluster number: 0 ~ k_means-1
+            {
+                double distance = MD(j->second, centers[i]); // this spring node to each center point
+                if (distance < min_distance)
+                {
+                    min_distance = distance;
+                    closest_center = i;
+                }
+            }
+            j->second.cluster = closest_center;
+        }
+
+        // Calculate new centers for each cluster
+        vector<double> sum_x(k_means, 0.0), sum_y(k_means, 0.0);
+        vector<int> count(k_means, 0);
+        for (auto j = SpringNodeMap.begin(); j != SpringNodeMap.end(); j++) // iterate through all spring nodes
+        {
+            int cluster = j->second.cluster;
+            SpringNode *Member = &(j->second);
+            centers[cluster].cluster_members.push_back(Member);
+            centers[cluster].cluster_size++;
+            sum_x[cluster] += j->second.x;
+            sum_y[cluster] += j->second.y;
+            count[cluster]++;
+        }
+
+        for (unsigned int i = 0; i < k_means; ++i)
+        {
+            if (count[i] > 0)
+            {
+                centers[i].x = sum_x[i] / count[i];
+                centers[i].y = sum_y[i] / count[i];
+            }
+        }
+    }
+    // now we have cluster centers and each of its members
+    cout << "Centers:\n";
+    for (int i = 0; i < k_means; i++)
+    {
+        cout << "Center at (" << centers[i].x << ", " << centers[i].y << ")\n";
+    }
+    cout << "Points in each cluster: " << endl;
+    for (int i = 0; i < k_means; i++)
+    {
+        cout << "Cluster " << i << ": ";
+        for (int j = 0; j < centers[i].cluster_size; j++)
+        {
+            cout << centers[i].cluster_members[j]->springnode_name << " ";
+        }
+        cout << endl;
+    }
+    return centers;
+}
 
 //----------------------------------------------------------------
 // main
@@ -924,105 +1020,5 @@ int main()
     cout << "-----------------------------------------------\n";
     Bin_map->print();
 
-    // clustering
-    // vector<Point> points; -> vector<SpringNode*> springlist;
-
-    unsigned int k = 20, t = 1000; // k = 20 clusters, t = 10 iterations
-    // decide iteration by machine learning?
-
-    // Finding bounding box of points
-    vector<SpringNode *>::iterator min_x_it = min_element(springlist.begin(), springlist.end(), compareX);
-    vector<SpringNode *>::iterator max_x_it = max_element(springlist.begin(), springlist.end(), compareX);
-    vector<SpringNode *>::iterator min_y_it = min_element(springlist.begin(), springlist.end(), compareY);
-    vector<SpringNode *>::iterator max_y_it = max_element(springlist.begin(), springlist.end(), compareY);
-
-    double min_x = min_x_it->x;
-    double max_x = max_x_it->x;
-    double min_y = min_y_it->y;
-    double max_y = max_y_it->y;
-
-    // Initializing centers with random coordinates within bounding box
-    vector<Point> centers(k);
-    uniform_real_distribution<> dis_center_x(min_x, max_x);
-    uniform_real_distribution<> dis_center_y(min_y, max_y);
-    random_device rd;
-    mt19937 gen(rd());
-    for (unsigned int i = 0; i < k; ++i)
-    {
-        centers[i].x = dis_center_x(gen);
-        centers[i].y = dis_center_y(gen);
-    }
-
-    // Loop for the number of iterations
-    for (unsigned int iter = 0; iter < t; iter++)
-    {
-        // Assign points to the nearest center
-        for (unsigned int j = 0; j < springlist.size(); j++)
-        {
-            double min_distance = numeric_limits<double>::max(); // initialize to max value
-            int closest_center = -1;                             // initialize the closest center
-            for (unsigned int i = 0; i < k; ++i)
-            {
-                double distance = MD(springlist[j], centers[i]);
-                if (distance < min_distance)
-                {
-                    min_distance = distance;
-                    closest_center = i;
-                }
-            }
-            springlist[j]->cluster = closest_center;
-        }
-
-        // Calculate new centers for each cluster
-        vector<double> sum_x(k, 0.0), sum_y(k, 0.0);
-        vector<int> count(k, 0);
-        for (unsigned int j = 0; j < springlist.size(); ++j)
-        {
-            int cluster = springlist[j]->cluster;
-            sum_x[cluster] += springlist[j]->x;
-            sum_y[cluster] += springlist[j]->y;
-            count[cluster]++;
-        }
-
-        for (unsigned int i = 0; i < k; ++i)
-        {
-            if (count[i] > 0)
-            {
-                centers[i].x = sum_x[i] / count[i];
-                centers[i].y = sum_y[i] / count[i];
-            }
-        }
-    }
-    // Access the coordinates of the centers and create them as new points
-    vector<Point> center_points;
-    for (unsigned int i = 0; i < centers.size(); ++i)
-    {
-        Point new_point;
-        new_point.x = centers[i].x;
-        new_point.y = centers[i].y;
-        center_points.push_back(new_point);
-    }
-
-    // Output the centers for verification
-    // number of points in each cluster
-    vector<int> cluster_nums(center_points.size(), 0);
-
-    cout << "Centers:\n";
-    for (int i = 0; i < center_points.size(); ++i)
-    {
-        cout << "Center at (" << center_points[i].x << ", " << center_points[i].y << ")\n";
-    }
-
-    // Output the clusters and their points for verification
-    cout << "\nClusters:\n";
-    for (unsigned int i = 0; i < springlist.size(); ++i)
-    {
-        cout << "Point " << i << " at (" << springlist[i]->x << ", " << springlist[i]->y << ") is in cluster " << springlist[i]->cluster << "\n";
-        cluster_nums[springlist[i]->cluster]++;
-    }
-
-    cout << "Points in each cluster: " << endl;
-    for (int i = 0; i < cluster_nums.size(); i++)
-        cout << i << " " << cluster_nums[i] << endl;
     return 0;
 }
