@@ -912,7 +912,7 @@ void priority_map_formulation()
         sort(i->second.begin(), i->second.end());
     }
 }
-// vector<Point> clusters; // 回傳每個cluster center of mass point
+// 會回傳 所有的 cluster points, 可以存取每個 cluster 的成員, cluster size
 vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode> SpringNodeMap)
 {
     // Finding bounding box of points
