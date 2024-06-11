@@ -58,6 +58,14 @@
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
     "vector": "cpp",
-    "unordered_map": "cpp"
+    "unordered_map": "cpp",
+    "__hash_table": "cpp",
+    "__split_buffer": "cpp",
+    "array": "cpp",
+    "bitset": "cpp",
+    "initializer_list": "cpp",
+    "string": "cpp",
+    "string_view": "cpp",
+    "unordered_set": "cpp"
   }
 }

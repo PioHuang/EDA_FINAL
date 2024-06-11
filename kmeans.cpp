@@ -774,7 +774,7 @@ int main()
 
     // signal list
     vector<Point> points;
-    unsigned int k = 20, t = 100; // k = 20 clusters, t = 10 iterations
+    unsigned int k = 20, t = 1000; // k = 20 clusters, t = 10 iterations
     // decide iteration by machine learning?
 
     // Generating 100 random points
@@ -910,6 +910,7 @@ int main()
     {
         sort(i->second.begin(), i->second.end());
     }
+
     /*for (auto i = priority_map.begin(); i != priority_map.end(); i++)
     {
         int num_bit = i->first;
