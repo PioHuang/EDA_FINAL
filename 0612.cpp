@@ -32,8 +32,8 @@ double Displacement_delay;
 
 double k_spring = 0.05;
 int spring_iter_limit = 100;
-double spring_improvement_ratio_threshold = 0.0000001;  // During spring iteration, if the improvement ratio is less than this threshold, then the spring iteration immediately stops.
-double damping_coefficient = 0.3; // v' = v * damping_coefficient + F/m * dt
+double spring_improvement_ratio_threshold = 0.0000001; // During spring iteration, if the improvement ratio is less than this threshold, then the spring iteration immediately stops.
+double damping_coefficient = 0.3;                      // v' = v * damping_coefficient + F/m * dt
 
 struct Pin
 {
@@ -44,9 +44,10 @@ struct Pin
     vector<string> springnode_names;
     bool is_input;
     Pin(string name, double x, double y, bool is_input)
-        : name(name), x(x), y(y), is_input(is_input) {
-            net_name = "";
-        }
+        : name(name), x(x), y(y), is_input(is_input)
+    {
+        net_name = "";
+    }
 
     void ConnectPin(string s)
     {
@@ -599,10 +600,10 @@ struct SpringNode
     vector<double> velocity;
     int cluster;
     bool is_movable;
-    Signal* signal;
+    Signal *signal;
     double mass = 1;
 
-    SpringNode(string name, double x, double y, bool is_movable, Signal* signal)
+    SpringNode(string name, double x, double y, bool is_movable, Signal *signal)
         : springnode_name(name), x(x), y(y), is_movable(is_movable), signal(signal)
     {
         velocity.resize(2);
@@ -712,7 +713,7 @@ void initialize_SpringNode_map()
     for (auto it = Signal_map.begin(); it != Signal_map.end(); it++)
     {
         string springnode_name = it->first;
-        Signal* signal = it->second;
+        Signal *signal = it->second;
         // Start calculating the position of the signal
         double signal_x = (signal->d_pin->x + signal->q_pin->x + signal->clk_pin->x) / 3;
         double signal_y = (signal->d_pin->y + signal->q_pin->y + signal->clk_pin->y) / 3;
@@ -753,7 +754,7 @@ void initialize_1node_adj_list(SpringNode *springnode, Pin *d_pin, Pin *q_pin, P
     }
 
     // clk_pin
-    if (clk_pin != nullptr  && clk_pin->net_name != "" && Net_map[clk_pin->net_name]->input_pin != nullptr)
+    if (clk_pin != nullptr && clk_pin->net_name != "" && Net_map[clk_pin->net_name]->input_pin != nullptr)
     {
         Pin *clk_pin_from = Net_map[clk_pin->net_name]->input_pin;
         string clk_pin_springnode_name = clk_pin_from->springnode_names[0];
@@ -837,14 +838,14 @@ double total_spring_length_sum()
     {
         total_spring_length_sum += it->second->adj_spring_length_sum();
     }
-    return total_spring_length_sum / 2 ;
+    return total_spring_length_sum / 2;
 }
 
 void activate_Spring_1_iteration()
 {
     for (auto it = SpringNode_map.begin(); it != SpringNode_map.end(); it++)
     {
-        SpringNode* springnode = it->second;
+        SpringNode *springnode = it->second;
         if (springnode->is_movable)
         {
             springnode->update_force();
@@ -853,7 +854,7 @@ void activate_Spring_1_iteration()
     }
     for (auto it = SpringNode_map.begin(); it != SpringNode_map.end(); it++)
     {
-        SpringNode* springnode = it->second;
+        SpringNode *springnode = it->second;
         if (springnode->is_movable)
         {
             springnode->update_position();
@@ -872,7 +873,7 @@ void activate_Spring_n_iterations(int spring_iter_limit, double spring_improveme
         cout << "spring_iter_count = " << spring_iter_count << endl;
         activate_Spring_1_iteration();
         double new_length_sum = total_spring_length_sum();
-        if ( (length_sum - new_length_sum) / length_sum < spring_improvement_ratio_threshold )
+        if ((length_sum - new_length_sum) / length_sum < spring_improvement_ratio_threshold)
         {
             length_sum = new_length_sum;
             break;
@@ -882,7 +883,7 @@ void activate_Spring_n_iterations(int spring_iter_limit, double spring_improveme
     }
     cout << "After activating the springs:" << endl;
     cout << "total_spring_length_sum = " << length_sum << endl;
-    
+
     // check_SpringNode_map();
 }
 
@@ -1295,72 +1296,80 @@ void priority_map_formulation()
     }
 }
 // 會回傳 所有的 cluster points, 可以存取每個 cluster 的成員, cluster size
-vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode *> SpringNodeMap, int threshold)
+vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode *> &SpringNodeMap, int threshold)
 {
     // Finding bounding box of points
     double min_x = numeric_limits<double>::max();
-    double max_x = 0.0;
+    double max_x = numeric_limits<double>::lowest();
     double min_y = numeric_limits<double>::max();
-    double max_y = 0.0;
-    for (auto i = SpringNodeMap.begin(); i != SpringNodeMap.end(); i++)
+    double max_y = numeric_limits<double>::lowest();
+
+    for (const auto &entry : SpringNodeMap)
     {
-        if (i->second->x < min_x)
-            min_x = i->second->x;
-        if (i->second->x > max_x)
-            max_x = i->second->x;
-        if (i->second->y < min_y)
-            min_y = i->second->y;
-        if (i->second->y > max_y)
-            max_y = i->second->y;
+        const SpringNode *node = entry.second;
+        min_x = min(min_x, node->x);
+        max_x = max(max_x, node->x);
+        min_y = min(min_y, node->y);
+        max_y = max(max_y, node->y);
     }
 
     // Initializing centers with random coordinates within bounding box
     vector<Point> centers(k_means);
-    uniform_real_distribution<> dis_center_x(min_x, max_x);
-    uniform_real_distribution<> dis_center_y(min_y, max_y);
     random_device rd;
     mt19937 gen(rd());
-    for (unsigned int i = 0; i < k_means; i++)
+    uniform_real_distribution<> dis_center_x(min_x, max_x);
+    uniform_real_distribution<> dis_center_y(min_y, max_y);
+
+    for (auto &center : centers)
     {
-        centers[i].x = dis_center_x(gen);
-        centers[i].y = dis_center_y(gen);
+        center.x = dis_center_x(gen);
+        center.y = dis_center_y(gen);
     }
 
     // Loop for the number of iterations
-    for (unsigned int iter = 0; iter < iterations; iter++)
+    for (unsigned int iter = 0; iter < iterations; ++iter)
     {
         // Assign points to the nearest center
-        for (auto j = SpringNodeMap.begin(); j != SpringNodeMap.end(); j++) // iterate through each spring node
+        for (auto &entry : SpringNodeMap)
         {
-            double min_distance = numeric_limits<double>::max(); // initialize to max value
-            int closest_center = -1;                             // initialize the closest center
-            for (unsigned int i = 0; i < k_means; i++)           // cluster number: 0 ~ k_means-1
+            SpringNode *node = entry.second;
+            double min_distance = numeric_limits<double>::max();
+            int closest_center = -1;
+
+            for (unsigned int i = 0; i < k_means; ++i)
             {
-                double distance = MD(*(j->second), centers[i]); // this spring node to each center point
+                double distance = MD(*node, centers[i]);
                 if (distance < min_distance)
                 {
                     min_distance = distance;
                     closest_center = i;
                 }
             }
-            j->second->cluster = closest_center;
+            node->cluster = closest_center;
         }
 
         // Calculate new centers for each cluster
         vector<double> sum_x(k_means, 0.0), sum_y(k_means, 0.0);
         vector<int> count(k_means, 0);
-        for (auto j = SpringNodeMap.begin(); j != SpringNodeMap.end(); j++) // iterate through all spring nodes
+
+        for (auto &center : centers)
         {
-            int cluster = j->second->cluster;
-            SpringNode *Member = (j->second); // pointer to member node
-            centers[cluster].cluster_members.push_back(Member);
+            center.cluster_members.clear();
+            center.cluster_size = 0;
+        }
+
+        for (auto &entry : SpringNodeMap)
+        {
+            SpringNode *node = entry.second;
+            int cluster = node->cluster;
+            centers[cluster].cluster_members.push_back(node);
             centers[cluster].cluster_size++;
-            sum_x[cluster] += j->second->x;
-            sum_y[cluster] += j->second->y;
+            sum_x[cluster] += node->x;
+            sum_y[cluster] += node->y;
             count[cluster]++;
         }
 
-        for (unsigned int i = 0; i < k_means; i++)
+        for (unsigned int i = 0; i < k_means; ++i)
         {
             if (count[i] > 0)
             {
@@ -1370,55 +1379,57 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
         }
     }
 
-    // Check for oversized clusters and handle reclustering
-    vector<Point> new_centers;
+    // Refine clusters to ensure member count constraint
+    vector<Point> refined_centers;
     for (auto &center : centers)
     {
         if (center.cluster_size > threshold)
         {
+            // Perform reclustering on the members of the oversized cluster
             unordered_map<string, SpringNode *> sub_map;
             for (auto member : center.cluster_members)
             {
                 sub_map[member->springnode_name] = member;
             }
-            // Perform reclustering on the sub_map
-            vector<Point> reclustered_centers = cluster_alg(k_means, iterations, sub_map, threshold);
-            // Collect the new centers for merging
-            new_centers.insert(new_centers.end(), reclustered_centers.begin(), reclustered_centers.end());
+            unsigned int sub_k_means = (center.cluster_size + threshold - 1) / threshold; // ceil division to get sub_k_means
+            vector<Point> reclustered_centers = cluster_alg(sub_k_means, iterations, sub_map, threshold);
+            refined_centers.insert(refined_centers.end(), reclustered_centers.begin(), reclustered_centers.end());
         }
         else
         {
-            new_centers.push_back(center);
+            refined_centers.push_back(center);
         }
     }
 
-    // Replace the old centers with the new set of centers
-    centers = new_centers;
-
-    // now we have cluster centers and each of its members
-    cout << "Centers:\n";
-    for (int i = 0; i < k_means; i++)
+    for (auto &center : refined_centers)
     {
-        cout << "Center at (" << centers[i].x << ", " << centers[i].y << ")\n";
+        center.x = round(center.x);
+        center.y = round(center.y);
     }
-    cout << "Points in each cluster: " << endl;
-    for (int i = 0; i < k_means; i++)
+
+    return refined_centers;
+}
+void output_clusters(vector<Point> &clusters)
+{
+    ofstream outfile("clusters.txt");
+
+    // Output cluster information
+    outfile << "Centers:\n";
+    for (const auto &center : clusters)
     {
-        cout << "Cluster " << i << ": ";
-        for (int j = 0; j < centers[i].cluster_size; j++)
+        outfile << "Center at (" << center.x << ", " << center.y << ")\n";
+    }
+    outfile << "Points in each cluster:\n";
+    for (const auto &center : clusters)
+    {
+        outfile << "Cluster " << &center - &clusters[0] << ": ";
+        for (const auto &member : center.cluster_members)
         {
-            cout << centers[i].cluster_members[j]->springnode_name << " ";
+            outfile << member->springnode_name << " ";
         }
-        cout << endl;
+        outfile << endl;
     }
-
-    for (int i = 0; i < centers.size(); i++)
-    {
-        centers[i].x = round(centers[i].x);
-        centers[i].y = round(centers[i].y);
-    }
-
-    return centers;
+    outfile.close();
 }
 
 //----------------------------------------------------------------
@@ -1446,16 +1457,16 @@ int main()
     initialize_adj_list();
     cout << "Done initialize_adj_list" << endl;
     // check_SpringNode_map();
-    
+
     // 彈簧，啟動！
     activate_Spring_n_iterations(spring_iter_limit, spring_improvement_ratio_threshold);
 
-
-
-
-    // cout << "Start clustering" << endl;
-    // int k_means = round(SpringNode_map.size() / 16);
-    // cluster_alg(k_means, 10, SpringNode_map, 16);
+    cout << "spring node number: " << SpringNode_map.size() << endl;
+    // clustering
+    cout << "Clustering..." << endl;
+    vector<Point> clusters = cluster_alg(1000, 10, SpringNode_map, 4);
+    output_clusters(clusters);
+    cout << "Done clustering!" << endl;
 
     return 0;
 }
