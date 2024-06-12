@@ -1464,7 +1464,7 @@ int main()
     cout << "spring node number: " << SpringNode_map.size() << endl;
     // clustering
     cout << "Clustering..." << endl;
-    vector<Point> clusters = cluster_alg(1000, 10, SpringNode_map, 4);
+    vector<Point> clusters = cluster_alg(1000, 80, SpringNode_map, 4);
     output_clusters(clusters);
     cout << "Done clustering!" << endl;
 
