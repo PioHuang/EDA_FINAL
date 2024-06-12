@@ -32,7 +32,7 @@ double Displacement_delay;
 
 double k_spring = 1;
 int spring_iter_count = 100;
-double damping_coefficient = 0.8;  // v' = v * damping_coefficient + F/m * dt
+double damping_coefficient = 0.8; // v' = v * damping_coefficient + F/m * dt
 
 struct Pin
 {
@@ -484,7 +484,7 @@ public:
     }
 
     unordered_map<string, Pin *> pin_list;
-    Pin* input_pin;
+    Pin *input_pin;
     int pin_num;
     string net_name;
 };
@@ -493,45 +493,49 @@ unordered_map<string, InstanceF *> InstanceF_map;
 unordered_map<string, InstanceG *> InstanceG_map;
 unordered_map<string, Net *> Net_map;
 
-
 //----------------------------------------------------------------
 // Signal & SpringNode
 //----------------------------------------------------------------
 
-struct Signal 
+struct Signal
 {
     string signal_name;
-    Pin* d_pin;
-    Pin* q_pin;
-    Net* q_net;
-    Pin* clk_pin;
+    Pin *d_pin;
+    Pin *q_pin;
+    Net *q_net;
+    Pin *clk_pin;
 
-    Signal(string name, Pin* d, Pin* q, Pin* clk)
-    : signal_name(name), d_pin(d), q_pin(q), clk_pin(clk) {
+    Signal(string name, Pin *d, Pin *q, Pin *clk)
+        : signal_name(name), d_pin(d), q_pin(q), clk_pin(clk)
+    {
         q_net = Net_map[q->net_name];
     }
 
     void print()
     {
-        cout << "signal_name = "<< signal_name << " ; " ;
-        cout << "d_pin from = " << d_pin->net_name << " ; " ;
-        cout << "q_pin to = " << q_net->net_name << " ; " ;
-        cout << "clk_pin = " << clk_pin->net_name << " ; " ;
+        cout << "signal_name = " << signal_name << " ; ";
+        cout << "d_pin from = " << d_pin->net_name << " ; ";
+        cout << "q_pin to = " << q_net->net_name << " ; ";
+        cout << "clk_pin = " << clk_pin->net_name << " ; ";
         cout << endl;
     }
 };
 
-unordered_map<string, Signal*> Signal_map;
+unordered_map<string, Signal *> Signal_map;
 
-void initialize_Signal_map() {
-    for (auto it = InstanceF_map.begin(); it != InstanceF_map.end(); it++) {
-        InstanceF* instf = it->second;
+void initialize_Signal_map()
+{
+    for (auto it = InstanceF_map.begin(); it != InstanceF_map.end(); it++)
+    {
+        InstanceF *instf = it->second;
 
         // Start finding the clk_pin of the FF
-        Pin* clk_pin = nullptr;
-        for (auto it2 = instf->instance_ff->pins.begin(); it2 != instf->instance_ff->pins.end(); it2++) {
-            Pin* pin = it2->second;
-            if (pin->name[0] == 'c' || pin->name[0] == 'C') {
+        Pin *clk_pin = nullptr;
+        for (auto it2 = instf->instance_ff->pins.begin(); it2 != instf->instance_ff->pins.end(); it2++)
+        {
+            Pin *pin = it2->second;
+            if (pin->name[0] == 'c' || pin->name[0] == 'C')
+            {
                 clk_pin = pin;
                 break;
             }
@@ -540,20 +544,23 @@ void initialize_Signal_map() {
         // Finish finding the clk_pin of the FF
 
         // Start identifying the signals of the FF
-        for (auto it2 = instf->instance_ff->pins.begin(); it2 != instf->instance_ff->pins.end(); it2++) {
-            Pin* pin = it2->second;
-            if (pin->name[0] == 'D') {  // We find a signal!
-                Pin* d_pin = pin;
+        for (auto it2 = instf->instance_ff->pins.begin(); it2 != instf->instance_ff->pins.end(); it2++)
+        {
+            Pin *pin = it2->second;
+            if (pin->name[0] == 'D')
+            { // We find a signal!
+                Pin *d_pin = pin;
                 string d_pin_idx = d_pin->name.substr(1, d_pin->name.length() - 1);
-                Pin* q_pin = d_pin;  // Initialization: In case we did not find the q_pin
+                Pin *q_pin = d_pin; // Initialization: In case we did not find the q_pin
                 string q_pin_name = "Q" + d_pin_idx;
-                if (instf->instance_ff->pins.find(q_pin_name)!= instf->instance_ff->pins.end()) {
+                if (instf->instance_ff->pins.find(q_pin_name) != instf->instance_ff->pins.end())
+                {
                     q_pin = instf->instance_ff->pins[q_pin_name];
                 }
 
                 // Construct the signal
                 string signal_name = instf->name + "/" + d_pin->name + "_" + instf->name + "/" + q_pin->name;
-                Signal* signal = new Signal(signal_name,d_pin,q_pin,clk_pin);
+                Signal *signal = new Signal(signal_name, d_pin, q_pin, clk_pin);
                 Signal_map[signal_name] = signal;
             }
         }
@@ -561,23 +568,27 @@ void initialize_Signal_map() {
     }
 }
 
-void check_Signal_map(int signal_count_limit = 5) {
+void check_Signal_map(int signal_count_limit = 5)
+{
     cout << "-----------------------------------------------" << endl;
-    cout << "Checking Signal_map by printing " ;
+    cout << "Checking Signal_map by printing ";
     cout << "(at most " << signal_count_limit << ") signals." << endl;
     int signal_count = 0;
-    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++) {
+    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++)
+    {
         signal_count += 1;
         it->second->print();
-        if (signal_count == signal_count_limit) {
+        if (signal_count == signal_count_limit)
+        {
             return;
         }
     }
 }
 
-struct SpringNode{
+struct SpringNode
+{
     string springnode_name;
-    unordered_map<string, SpringNode*> adj_list;
+    unordered_map<string, SpringNode *> adj_list;
     double x, y;
     vector<double> force;
     vector<double> velocity;
@@ -586,7 +597,8 @@ struct SpringNode{
     double mass = 1;
 
     SpringNode(string name, double x, double y, bool is_movable)
-    : springnode_name(name), x(x), y(y), is_movable(is_movable) {
+        : springnode_name(name), x(x), y(y), is_movable(is_movable)
+    {
         velocity.resize(2);
         velocity[0] = 0.0;
         velocity[1] = 0.0;
@@ -595,106 +607,121 @@ struct SpringNode{
         force[1] = 0.0;
     }
 
-    void initialize_velocity(){
+    void initialize_velocity()
+    {
         velocity[0] = 0.0;
         velocity[1] = 0.0;
     }
 
-    void update_force(){
+    void update_force()
+    {
         force[0] = 0, force[1] = 0;
-        for (auto it = adj_list.begin(); it != adj_list.end(); it++) {
+        for (auto it = adj_list.begin(); it != adj_list.end(); it++)
+        {
             force[0] += k_spring * (it->second->x - x);
             force[1] += k_spring * (it->second->y - y);
         }
     }
 
-    void update_velocity(){
+    void update_velocity()
+    {
         velocity[0] = velocity[0] * damping_coefficient + force[0] / mass;
         velocity[1] = velocity[1] * damping_coefficient + force[1] / mass;
     }
 
-    void update_position(){
+    void update_position()
+    {
         x += velocity[0];
         y += velocity[1];
     }
 
-    void print() {
-        cout << "springnode_name = " << springnode_name << " ; " ;
-        cout << "x = " << x << " ; " ;
-        cout << "y = " << y << " ; " ;
-        cout << "movable = " << (is_movable ? "true" : "false") << " ; " ;
-        cout << "adj nodes :" ;
-        for (auto it = adj_list.begin(); it != adj_list.end(); it++) {
+    void print()
+    {
+        cout << "springnode_name = " << springnode_name << " ; ";
+        cout << "x = " << x << " ; ";
+        cout << "y = " << y << " ; ";
+        cout << "movable = " << (is_movable ? "true" : "false") << " ; ";
+        cout << "adj nodes :";
+        for (auto it = adj_list.begin(); it != adj_list.end(); it++)
+        {
             cout << it->first << " ";
         }
         cout << endl;
     }
 };
 
-unordered_map<string, SpringNode*> SpringNode_map;
+unordered_map<string, SpringNode *> SpringNode_map;
 
-void initialize_SpringNode_map() {
+void initialize_SpringNode_map()
+{
     // SpringNode 分成 3 種
     // 第 1 種 : Die inputs / outputs
     // 第 2 種 : Gate pins
     // 第 3 種 : Signals
 
-    // 第 1-1 種 : Die inputs 
-    for (auto it = die.input_pins.begin(); it != die.input_pins.end(); it++) {
-        SpringNode* springnode = new SpringNode(it->first, it->second->x, it->second->y, false);
+    // 第 1-1 種 : Die inputs
+    for (auto it = die.input_pins.begin(); it != die.input_pins.end(); it++)
+    {
+        SpringNode *springnode = new SpringNode(it->first, it->second->x, it->second->y, false);
         SpringNode_map[it->first] = springnode;
         it->second->connect_springnode(it->first);
     }
-    // 第 1-2 種 : Die outputs 
-    for (auto it = die.output_pins.begin(); it != die.output_pins.end(); it++) {
-        SpringNode* springnode = new SpringNode(it->first, it->second->x, it->second->y, false);
+    // 第 1-2 種 : Die outputs
+    for (auto it = die.output_pins.begin(); it != die.output_pins.end(); it++)
+    {
+        SpringNode *springnode = new SpringNode(it->first, it->second->x, it->second->y, false);
         SpringNode_map[it->first] = springnode;
         it->second->connect_springnode(it->first);
     }
 
     // 第 2 種 : Gate pins
-    for (auto it = InstanceG_map.begin(); it != InstanceG_map.end(); it++) {
-        InstanceG* gate = it->second;
-        for (auto it2 = gate->instance_gate->pins.begin(); it2 != gate->instance_gate->pins.end(); it2++) {
+    for (auto it = InstanceG_map.begin(); it != InstanceG_map.end(); it++)
+    {
+        InstanceG *gate = it->second;
+        for (auto it2 = gate->instance_gate->pins.begin(); it2 != gate->instance_gate->pins.end(); it2++)
+        {
             string springnode_name = it->first + "/" + it2->first;
-            SpringNode* springnode = new SpringNode(springnode_name, it2->second->x, it2->second->y, false);
+            SpringNode *springnode = new SpringNode(springnode_name, it2->second->x, it2->second->y, false);
             SpringNode_map[springnode_name] = springnode;
             it2->second->connect_springnode(springnode_name);
         }
     }
 
     // 第 3 種 : Signals
-    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++) {
+    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++)
+    {
         string springnode_name = it->first;
         // Start calculating the position of the signal
         double signal_x = (it->second->d_pin->x + it->second->q_pin->x + it->second->clk_pin->x) / 3;
         double signal_y = (it->second->d_pin->y + it->second->q_pin->y + it->second->clk_pin->y) / 3;
         // Finish calculating the position of the signal
-        SpringNode* springnode = new SpringNode(springnode_name, signal_x, signal_y, true);
+        SpringNode *springnode = new SpringNode(springnode_name, signal_x, signal_y, true);
         SpringNode_map[springnode_name] = springnode;
         it->second->d_pin->connect_springnode(springnode_name);
         it->second->q_pin->connect_springnode(springnode_name);
         it->second->clk_pin->connect_springnode(springnode_name);
     }
-    
 }
 
-void initialize_1node_adj_list(SpringNode* springnode, Pin* d_pin, Pin* q_pin, Pin* clk_pin) {
+void initialize_1node_adj_list(SpringNode *springnode, Pin *d_pin, Pin *q_pin, Pin *clk_pin)
+{
     // d_pin
-    if (d_pin != nullptr) {
-        Pin* d_pin_from = Net_map[d_pin->net_name]->input_pin;  
+    if (d_pin != nullptr)
+    {
+        Pin *d_pin_from = Net_map[d_pin->net_name]->input_pin;
         string d_pin_springnode_name = d_pin_from->springnode_names[0];
         springnode->adj_list[d_pin_springnode_name] = SpringNode_map[d_pin_springnode_name];
     }
-    
+
     // q_pin : 會連結到多個 pin ，並且可能會遇到 clk ， 也就是會有多個 SpringNode 連結到它
     if (q_pin != nullptr)
     {
-        Net* q_net = Net_map[q_pin->net_name];
+        Net *q_net = Net_map[q_pin->net_name];
         for (auto it = q_net->pin_list.begin(); it != q_net->pin_list.end(); it++)
         {
-            Pin* pin = it->second;
-            for (auto springnode_name : pin->springnode_names) {
+            Pin *pin = it->second;
+            for (auto springnode_name : pin->springnode_names)
+            {
                 if (pin != q_net->input_pin)
                 {
                     springnode->adj_list[springnode_name] = SpringNode_map[springnode_name];
@@ -702,11 +729,11 @@ void initialize_1node_adj_list(SpringNode* springnode, Pin* d_pin, Pin* q_pin, P
             }
         }
     }
-    
+
     // clk_pin
-    if (clk_pin != nullptr) 
+    if (clk_pin != nullptr)
     {
-        Pin* clk_pin_from = Net_map[clk_pin->net_name]->input_pin;
+        Pin *clk_pin_from = Net_map[clk_pin->net_name]->input_pin;
         string clk_pin_springnode_name = clk_pin_from->springnode_names[0];
         springnode->adj_list[clk_pin_springnode_name] = SpringNode_map[clk_pin_springnode_name];
     }
@@ -719,7 +746,7 @@ void initialize_adj_list()
     // 第 2 種 : Gate pins
     // 第 3 種 : Signals
 
-    // 第 1-1 種 : Die inputs 
+    // 第 1-1 種 : Die inputs
     for (auto it = die.input_pins.begin(); it != die.input_pins.end(); it++)
     {
         initialize_1node_adj_list(SpringNode_map[it->first], nullptr, it->second, nullptr);
@@ -734,14 +761,19 @@ void initialize_adj_list()
     cout << "Done initialize_1node_adj_list : Part 1-2" << endl;
 
     // 第 2 種 : Gate pins
-    for (auto it = InstanceG_map.begin(); it != InstanceG_map.end(); it++) {
-        InstanceG* gate = it->second;
-        for (auto it2 = gate->instance_gate->pins.begin(); it2 != gate->instance_gate->pins.end(); it2++) {
+    for (auto it = InstanceG_map.begin(); it != InstanceG_map.end(); it++)
+    {
+        InstanceG *gate = it->second;
+        for (auto it2 = gate->instance_gate->pins.begin(); it2 != gate->instance_gate->pins.end(); it2++)
+        {
             string springnode_name = it->first + "/" + it2->first;
-            if (it2->first[0] == 'o' || it2->first[0] == 'O') {
+            if (it2->first[0] == 'o' || it2->first[0] == 'O')
+            {
                 // 他是 gate 的 output ， 也就是跟 die.input_pins 類似
                 initialize_1node_adj_list(SpringNode_map[springnode_name], nullptr, it2->second, nullptr);
-            } else {
+            }
+            else
+            {
                 // 他是 gate 的 input ， 也就是跟 die.output_pins 類似
                 initialize_1node_adj_list(SpringNode_map[springnode_name], it2->second, nullptr, nullptr);
             }
@@ -750,29 +782,33 @@ void initialize_adj_list()
     cout << "Done initialize_1node_adj_list : Part 2" << endl;
 
     // 第 3 種 : Signals
-    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++) {
+    for (auto it = Signal_map.begin(); it != Signal_map.end(); it++)
+    {
         string springnode_name = it->first;
         initialize_1node_adj_list(SpringNode_map[springnode_name], it->second->d_pin, it->second->q_pin, it->second->clk_pin);
     }
     cout << "Done initialize_1node_adj_list : Part 3" << endl;
 }
 
-void check_SpringNode_map(int springnode_count_limit = 5) {
+void check_SpringNode_map(int springnode_count_limit = 5)
+{
     cout << "-----------------------------------------------" << endl;
-    cout << "Checking SpringNode_map by printing " ;
+    cout << "Checking SpringNode_map by printing ";
     cout << "(at most " << springnode_count_limit << ") springnodes." << endl;
     int springnode_count = 0;
-    for (auto it = SpringNode_map.begin(); it != SpringNode_map.end(); it++) {
+    for (auto it = SpringNode_map.begin(); it != SpringNode_map.end(); it++)
+    {
         springnode_count += 1;
         it->second->print();
-        if (springnode_count == springnode_count_limit) {
+        if (springnode_count == springnode_count_limit)
+        {
             return;
         }
     }
 }
 
-void activate_Spring() {
-
+void activate_Spring()
+{
 }
 
 //----------------------------------------------------------------
@@ -1124,7 +1160,7 @@ void Put_Inst_Gate_to_Bin()
         }
     }
 }
-/*
+
 //----------------------------------------------------------------
 // Clustering helper functions
 //---------------------------------------------------------------
@@ -1184,7 +1220,7 @@ void priority_map_formulation()
     }
 }
 // 會回傳 所有的 cluster points, 可以存取每個 cluster 的成員, cluster size
-vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode> SpringNodeMap, int threshold)
+vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode *> SpringNodeMap, int threshold)
 {
     // Finding bounding box of points
     double min_x = numeric_limits<double>::max();
@@ -1193,14 +1229,14 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
     double max_y = 0.0;
     for (auto i = SpringNodeMap.begin(); i != SpringNodeMap.end(); i++)
     {
-        if (i->second.x < min_x)
-            min_x = i->second.x;
-        if (i->second.x > max_x)
-            max_x = i->second.x;
-        if (i->second.y < min_y)
-            min_y = i->second.y;
-        if (i->second.y > max_y)
-            max_y = i->second.y;
+        if (i->second->x < min_x)
+            min_x = i->second->x;
+        if (i->second->x > max_x)
+            max_x = i->second->x;
+        if (i->second->y < min_y)
+            min_y = i->second->y;
+        if (i->second->y > max_y)
+            max_y = i->second->y;
     }
 
     // Initializing centers with random coordinates within bounding box
@@ -1225,14 +1261,14 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
             int closest_center = -1;                             // initialize the closest center
             for (unsigned int i = 0; i < k_means; i++)           // cluster number: 0 ~ k_means-1
             {
-                double distance = MD(j->second, centers[i]); // this spring node to each center point
+                double distance = MD(*(j->second), centers[i]); // this spring node to each center point
                 if (distance < min_distance)
                 {
                     min_distance = distance;
                     closest_center = i;
                 }
             }
-            j->second.cluster = closest_center;
+            j->second->cluster = closest_center;
         }
 
         // Calculate new centers for each cluster
@@ -1240,16 +1276,16 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
         vector<int> count(k_means, 0);
         for (auto j = SpringNodeMap.begin(); j != SpringNodeMap.end(); j++) // iterate through all spring nodes
         {
-            int cluster = j->second.cluster;
-            SpringNode *Member = &(j->second);
+            int cluster = j->second->cluster;
+            SpringNode *Member = (j->second); // pointer to member node
             centers[cluster].cluster_members.push_back(Member);
             centers[cluster].cluster_size++;
-            sum_x[cluster] += j->second.x;
-            sum_y[cluster] += j->second.y;
+            sum_x[cluster] += j->second->x;
+            sum_y[cluster] += j->second->y;
             count[cluster]++;
         }
 
-        for (unsigned int i = 0; i < k_means; ++i)
+        for (unsigned int i = 0; i < k_means; i++)
         {
             if (count[i] > 0)
             {
@@ -1265,10 +1301,10 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
     {
         if (center.cluster_size > threshold)
         {
-            unordered_map<string, SpringNode> sub_map;
+            unordered_map<string, SpringNode *> sub_map;
             for (auto member : center.cluster_members)
             {
-                sub_map[member->springnode_name] = *member;
+                sub_map[member->springnode_name] = member;
             }
             // Perform reclustering on the sub_map
             vector<Point> reclustered_centers = cluster_alg(k_means, iterations, sub_map, threshold);
@@ -1300,9 +1336,15 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
         }
         cout << endl;
     }
+
+    for (int i = 0; i < centers.size(); i++)
+    {
+        centers[i].x = round(centers[i].x);
+        centers[i].y = round(centers[i].y);
+    }
+
     return centers;
 }
-*/
 
 //----------------------------------------------------------------
 // main
@@ -1310,7 +1352,7 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
 
 int main()
 {
-    string file_name = "testcase0.txt";
+    string file_name = "testcase1.txt";
     ifstream file = openFile(file_name);
     readLines(file);
     cout << "Finish readLines" << endl;
@@ -1318,7 +1360,7 @@ int main()
     // cout << "-----------------------------------------------\n";
     // Bin_map->print();
     // input_check();
-    
+
     initialize_Signal_map();
     cout << "Done initialize_Signal_map" << endl;
     check_Signal_map();
@@ -1326,9 +1368,12 @@ int main()
     initialize_SpringNode_map();
     cout << "Done initialize_SpringNode_map" << endl;
 
-    initialize_adj_list();
+    /*initialize_adj_list();
     cout << "Done initialize_adj_list" << endl;
-    check_SpringNode_map(100);
+    check_SpringNode_map(100);*/
+    cout << "Start clustering" << endl;
+    int k_means = round(SpringNode_map.size() / 16);
+    cluster_alg(k_means, 10, SpringNode_map, 16);
 
     return 0;
 }
