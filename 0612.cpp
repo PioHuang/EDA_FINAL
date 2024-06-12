@@ -1417,7 +1417,7 @@ void output_clusters(vector<Point> &clusters)
     outfile << "Centers:\n";
     for (const auto &center : clusters)
     {
-        outfile << "Center at (" << center.x << ", " << center.y << ")\n";
+        outfile << "Center " << &center - &clusters[0] << " at (" << center.x << ", " << center.y << ")\n";
     }
     outfile << "Points in each cluster:\n";
     for (const auto &center : clusters)
