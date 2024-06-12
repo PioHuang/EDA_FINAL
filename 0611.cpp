@@ -1249,6 +1249,7 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
     {
         centers[i].x = dis_center_x(gen);
         centers[i].y = dis_center_y(gen);
+        cout << i << endl;
     }
 
     // Loop for the number of iterations
@@ -1269,6 +1270,7 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
                 }
             }
             j->second->cluster = closest_center;
+            // cout << "assigned points to nearest center..." << endl;
         }
 
         // Calculate new centers for each cluster
@@ -1293,10 +1295,11 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
                 centers[i].y = sum_y[i] / count[i];
             }
         }
+        cout << "loop " << iter << endl;
     }
 
     // Check for oversized clusters and handle reclustering
-    vector<Point> new_centers;
+    /*vector<Point> new_centers;
     for (auto &center : centers)
     {
         if (center.cluster_size > threshold)
@@ -1308,6 +1311,7 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
             }
             // Perform reclustering on the sub_map
             vector<Point> reclustered_centers = cluster_alg(k_means, iterations, sub_map, threshold);
+            cout << "YA" << endl;
             // Collect the new centers for merging
             new_centers.insert(new_centers.end(), reclustered_centers.begin(), reclustered_centers.end());
         }
@@ -1315,36 +1319,22 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
         {
             new_centers.push_back(center);
         }
-    }
+        cout << "working on it..." << endl;
+    }*/
 
     // Replace the old centers with the new set of centers
-    centers = new_centers;
-
-    // now we have cluster centers and each of its members
-    cout << "Centers:\n";
-    for (int i = 0; i < k_means; i++)
-    {
-        cout << "Center at (" << centers[i].x << ", " << centers[i].y << ")\n";
-    }
-    cout << "Points in each cluster: " << endl;
-    for (int i = 0; i < k_means; i++)
-    {
-        cout << "Cluster " << i << ": ";
-        for (int j = 0; j < centers[i].cluster_size; j++)
-        {
-            cout << centers[i].cluster_members[j]->springnode_name << " ";
-        }
-        cout << endl;
-    }
+    // centers = new_centers;
 
     for (int i = 0; i < centers.size(); i++)
     {
         centers[i].x = round(centers[i].x);
         centers[i].y = round(centers[i].y);
     }
+    cout << "recursive call " << endl;
 
     return centers;
 }
+// different clk and movable conditions
 
 //----------------------------------------------------------------
 // main
@@ -1372,8 +1362,25 @@ int main()
     cout << "Done initialize_adj_list" << endl;
     check_SpringNode_map(100);*/
     cout << "Start clustering" << endl;
-    int k_means = round(SpringNode_map.size() / 16);
-    cluster_alg(k_means, 10, SpringNode_map, 16);
+    int k_means = ceil(SpringNode_map.size() / 4);
+    vector<Point> clusters = cluster_alg(k_means, 10, SpringNode_map, 4);
+
+    // now we have cluster centers and each of its members
+    cout << "Centers:\n";
+    for (int i = 0; i < k_means; i++)
+    {
+        cout << "Center at (" << clusters[i].x << ", " << clusters[i].y << ")\n";
+    }
+    cout << "Points in each cluster: " << endl;
+    for (int i = 0; i < k_means; i++)
+    {
+        cout << "Cluster " << i << ": ";
+        for (int j = 0; j < clusters[i].cluster_size; j++)
+        {
+            cout << clusters[i].cluster_members[j]->springnode_name << " ";
+        }
+        cout << endl;
+    }
 
     return 0;
 }
