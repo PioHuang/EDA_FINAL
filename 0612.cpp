@@ -1296,7 +1296,7 @@ void priority_map_formulation()
     }
 }
 // 會回傳 所有的 cluster points, 可以存取每個 cluster 的成員, cluster size
-vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode *> &SpringNodeMap, int threshold)
+vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode *> &SpringNodeMap, int threshold, double convergence_threshold)
 {
     // Finding bounding box of points
     double min_x = numeric_limits<double>::max();
@@ -1369,13 +1369,25 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
             count[cluster]++;
         }
 
-        for (unsigned int i = 0; i < k_means; ++i)
+        // Check for convergence
+        double max_center_shift = 0.0;
+        for (unsigned int i = 0; i < k_means; i++)
         {
             if (count[i] > 0)
             {
-                centers[i].x = sum_x[i] / count[i];
-                centers[i].y = sum_y[i] / count[i];
+                double new_x = sum_x[i] / count[i];
+                double new_y = sum_y[i] / count[i];
+                double shift = sqrt(pow(new_x - centers[i].x, 2) + pow(new_y - centers[i].y, 2));
+                max_center_shift = max(max_center_shift, shift);
+                centers[i].x = new_x;
+                centers[i].y = new_y;
             }
+        }
+
+        if (max_center_shift < convergence_threshold)
+        {
+            // cout << "this is the " << iter << "th iteration, converged!" << endl;
+            break;
         }
     }
 
@@ -1392,7 +1404,7 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
                 sub_map[member->springnode_name] = member;
             }
             unsigned int sub_k_means = (center.cluster_size + threshold - 1) / threshold; // ceil division to get sub_k_means
-            vector<Point> reclustered_centers = cluster_alg(sub_k_means, iterations, sub_map, threshold);
+            vector<Point> reclustered_centers = cluster_alg(sub_k_means, iterations, sub_map, threshold, convergence_threshold);
             refined_centers.insert(refined_centers.end(), reclustered_centers.begin(), reclustered_centers.end());
         }
         else
@@ -1414,18 +1426,12 @@ void output_clusters(vector<Point> &clusters)
     ofstream outfile("clusters.txt");
 
     // Output cluster information
-    outfile << "Centers:\n";
     for (const auto &center : clusters)
     {
-        outfile << "Center " << &center - &clusters[0] << " at (" << center.x << ", " << center.y << ")\n";
-    }
-    outfile << "Points in each cluster:\n";
-    for (const auto &center : clusters)
-    {
-        outfile << "Cluster " << &center - &clusters[0] << ": ";
+        outfile << "Cluster center " << &center - &clusters[0] << " at (" << center.x << ", " << center.y << "): ";
         for (const auto &member : center.cluster_members)
         {
-            outfile << member->springnode_name << " ";
+            outfile << member->springnode_name << ": (" << SpringNode_map[member->springnode_name]->x << ", " << SpringNode_map[member->springnode_name]->y << ") ";
         }
         outfile << endl;
     }
@@ -1464,7 +1470,7 @@ int main()
     cout << "spring node number: " << SpringNode_map.size() << endl;
     // clustering
     cout << "Clustering..." << endl;
-    vector<Point> clusters = cluster_alg(1000, 80, SpringNode_map, 4);
+    vector<Point> clusters = cluster_alg(1000, 1000, SpringNode_map, 4, 10);
     output_clusters(clusters);
     cout << "Done clustering!" << endl;
 
