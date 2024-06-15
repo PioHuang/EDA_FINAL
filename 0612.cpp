@@ -1294,6 +1294,15 @@ void priority_map_formulation()
     {
         sort(i->second.begin(), i->second.end());
     }
+    for (auto i = priority_map.begin(); i != priority_map.end(); i++)
+    {
+        cout << i->first << " bit(s): ";
+        for (int j = 0; j < i->second.size(); j++)
+        {
+            cout << i->second[j].second << " " << i->second[j].first << " ";
+        }
+        cout << endl;
+    }
 }
 // 會回傳 所有的 cluster points, 可以存取每個 cluster 的成員, cluster size
 vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unordered_map<string, SpringNode *> &SpringNodeMap, int threshold, double convergence_threshold)
@@ -1468,6 +1477,10 @@ int main()
     activate_Spring_n_iterations(spring_iter_limit, spring_improvement_ratio_threshold);
 
     cout << "spring node number: " << SpringNode_map.size() << endl;
+
+    // priority map formulation
+    // priority_map_formulation();
+
     // clustering
     cout << "Clustering..." << endl;
     vector<Point> clusters = cluster_alg(1000, 1000, SpringNode_map, 4, 10);
