@@ -1437,14 +1437,48 @@ void output_clusters(vector<Point> &clusters)
     // Output cluster information
     for (const auto &center : clusters)
     {
-        outfile << "Cluster center " << &center - &clusters[0] << " at (" << center.x << ", " << center.y << "): ";
+        /*outfile << "Cluster center " << &center - &clusters[0] << " at (" << center.x << ", " << center.y << "): ";
         for (const auto &member : center.cluster_members)
         {
             outfile << member->springnode_name << ": (" << SpringNode_map[member->springnode_name]->x << ", " << SpringNode_map[member->springnode_name]->y << ") ";
         }
-        outfile << endl;
+        outfile << endl;*/
+        outfile << center.x << " " << center.y << endl;
     }
     outfile.close();
+}
+
+unordered_map<string, unordered_map<string, SpringNode *>> Classification()
+{
+    unordered_map<string, unordered_map<string, SpringNode *>> clk_map;
+    int i = 0;
+    for (auto &node : SpringNode_map) // string, SpringNode*
+    {
+        // Check if the key exists in clk_map
+        if (node.second->is_movable)
+        {
+            string clk_net_name = node.second->signal->clk_pin->net_name;
+            if (clk_map.find(clk_net_name) == clk_map.end())
+            {
+                // Key does not exist, create a new map for this key
+                clk_map[clk_net_name] = unordered_map<string, SpringNode *>();
+            }
+
+            // Now, we can safely assign the value
+            clk_map[clk_net_name][node.first] = node.second;
+        }
+    }
+    for (auto &entry : clk_map)
+    {
+        cout << entry.first << ": ";
+        for (auto &node : entry.second)
+        {
+            cout << node.first << " ";
+        }
+        cout << endl;
+    }
+    // return clk_map;
+    return clk_map;
 }
 
 //----------------------------------------------------------------
@@ -1481,11 +1515,13 @@ int main()
     // priority map formulation
     // priority_map_formulation();
 
+    Classification();
+
     // clustering
-    cout << "Clustering..." << endl;
+    /*cout << "Clustering..." << endl;
     vector<Point> clusters = cluster_alg(1000, 1000, SpringNode_map, 4, 10);
     output_clusters(clusters);
-    cout << "Done clustering!" << endl;
+    cout << "Done clustering!" << endl;*/
 
     return 0;
 }
