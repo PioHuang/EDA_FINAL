@@ -1413,7 +1413,7 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
                 sub_map[member->springnode_name] = member;
             }
             unsigned int sub_k_means = (center.cluster_size + threshold - 1) / threshold; // ceil division to get sub_k_means
-            vector<Point> reclustered_centers = cluster_alg(sub_k_means, iterations, sub_map, threshold, convergence_threshold);
+            vector<Point> reclustered_centers = cluster_alg(2, iterations, sub_map, threshold, convergence_threshold);
             refined_centers.insert(refined_centers.end(), reclustered_centers.begin(), reclustered_centers.end());
         }
         else
@@ -1430,28 +1430,26 @@ vector<Point> cluster_alg(unsigned int k_means, unsigned int iterations, unorder
 
     return refined_centers;
 }
-void output_clusters(vector<Point> &clusters)
+/*void output_clusters(vector<Point> &clusters)
 {
     ofstream outfile("clusters.txt");
 
     // Output cluster information
     for (const auto &center : clusters)
     {
-        /*outfile << "Cluster center " << &center - &clusters[0] << " at (" << center.x << ", " << center.y << "): ";
+        outfile << "Cluster center " << &center - &clusters[0] << " at (" << center.x << ", " << center.y << "): ";
         for (const auto &member : center.cluster_members)
         {
             outfile << member->springnode_name << ": (" << SpringNode_map[member->springnode_name]->x << ", " << SpringNode_map[member->springnode_name]->y << ") ";
         }
-        outfile << endl;*/
+        outfile << endl;
         outfile << center.x << " " << center.y << endl;
     }
     outfile.close();
-}
-
-unordered_map<string, unordered_map<string, SpringNode *>> Classification()
+}*/
+unordered_map<string, unordered_map<string, SpringNode *>> clk_map;
+void Classification()
 {
-    unordered_map<string, unordered_map<string, SpringNode *>> clk_map;
-    int i = 0;
     for (auto &node : SpringNode_map) // string, SpringNode*
     {
         // Check if the key exists in clk_map
@@ -1468,17 +1466,6 @@ unordered_map<string, unordered_map<string, SpringNode *>> Classification()
             clk_map[clk_net_name][node.first] = node.second;
         }
     }
-    for (auto &entry : clk_map)
-    {
-        cout << entry.first << ": ";
-        for (auto &node : entry.second)
-        {
-            cout << node.first << " ";
-        }
-        cout << endl;
-    }
-    // return clk_map;
-    return clk_map;
 }
 
 //----------------------------------------------------------------
@@ -1516,12 +1503,37 @@ int main()
     // priority_map_formulation();
 
     Classification();
+    /*for (auto &entry : clk_map)
+    {
+        cout << entry.first << ": ";
+        for (auto &node : entry.second)
+        {
+            cout << node.first << " ";
+        }
+        cout << endl;
+    }*/
 
     // clustering
-    /*cout << "Clustering..." << endl;
-    vector<Point> clusters = cluster_alg(1000, 1000, SpringNode_map, 4, 10);
-    output_clusters(clusters);
-    cout << "Done clustering!" << endl;*/
-
-    return 0;
+    cout << "Clustering..." << endl;
+    ofstream outfile("clusters.txt");
+    for (auto it = clk_map.begin(); it != clk_map.end(); it++)
+    {
+        vector<Point> clusters = cluster_alg(2, 1000, it->second, 4, 10);
+        for (const auto &center : clusters)
+        {
+            if (center.cluster_size > 0)
+            {
+                outfile << "(" << center.x << ", " << center.y << "): ";
+                for (const auto &member : center.cluster_members)
+                {
+                    outfile << member->springnode_name << ": (" << SpringNode_map[member->springnode_name]->x << ", " << SpringNode_map[member->springnode_name]->y << ") ";
+                }
+                outfile << endl;
+                // outfile << center.x << " " << center.y << endl;
+            }
+        }
+        outfile << "----------" << endl;
+    }
+    outfile.close();
+    cout << "Done clustering!" << endl;
 }
