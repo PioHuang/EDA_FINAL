@@ -1516,6 +1516,7 @@ int main()
     // clustering
     cout << "Clustering..." << endl;
     ofstream outfile("clusters.txt");
+    vector<Point> banking_clusters; // stores all cluster information here
     for (auto it = clk_map.begin(); it != clk_map.end(); it++)
     {
         vector<Point> clusters = cluster_alg(2, 1000, it->second, 4, 10);
@@ -1523,6 +1524,7 @@ int main()
         {
             if (center.cluster_size > 0)
             {
+                banking_clusters.push_back(center);
                 outfile << "(" << center.x << ", " << center.y << "): ";
                 for (const auto &member : center.cluster_members)
                 {
