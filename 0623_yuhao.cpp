@@ -1568,18 +1568,39 @@ unordered_map<string, InstanceF *> ff_placing_map;
 void placing_ff()
 {
     int ff_placing_index = 1;
+    int center_count = 0;
+    bool print_out_center = false;
     for (auto & center : banking_clusters)
     {
+        center_count += 1;
+        if (center_count % 100 == 0)
+        {
+            print_out_center = true;
+        }
+        else
+        {  
+            print_out_center = false;
+        }
         string ff_name = ff_names_prefix + to_string(ff_placing_index);
         center.ff_name = ff_name;
         int bits = center.cluster_members.size();
         string ff_type;
         if (best_FF.find(bits) == best_FF.end())
         {
+            if (print_out_center)
+            {
+                cout << "Center count = " << center_count << endl;
+                cout << "No flip-flops with " << bits << " bits." << endl;
+            }
             continue;
             // If there are no flip-flops with this number of bits, skip this center.
             // This should not happen.
         } else {
+            if (print_out_center)
+            {
+                cout << "Center count = " << center_count << endl;
+                cout << "Found flip-flops with " << bits << " bits." << endl;
+            }
             ff_type = best_FF[bits];
         }
         // Start finding a location for the flip-flop
@@ -1611,12 +1632,12 @@ void placing_ff()
 void write_ff_placing_map_to_file(ofstream & outfile)
 {
     // TODO
-    outfile << "CellInst " << banking_clusters.size() << endl;
+    outfile << "CellInst " << ff_placing_map.size() << endl;
     for (auto & it : ff_placing_map)
     {
         string ff_name = it.first;
         InstanceF *ff = it.second;
-        outfile << "Inst " << ff_name << " " << ff->instance_type << " " << ff->x1 << " " << ff->y1 << endl;
+        outfile << fixed << "Inst " << ff_name << " " << ff->instance_type << " " << ff->x1 << " " << ff->y1 << endl;
     }
     for (auto & center : banking_clusters)
     {
@@ -1661,8 +1682,10 @@ void write_ff_placing_map_to_file(ofstream & outfile)
                 outfile << old_d_pin_name << " map " << new_dq_pin_name[dq_pin_count].first << endl;
                 outfile << old_q_pin_name << " map " << new_dq_pin_name[dq_pin_count].second << endl;
                 dq_pin_count += 1;
-            } else {
-                cout << "ERROR: dq_pin_count < new_dq_pin_name.size()" << endl;
+            }
+            else 
+            {
+                // cout << "ERROR: dq_pin_count < new_dq_pin_name.size()" << endl;
             }
 
             if (old_clk_pin_ff_names.find(old_ff_name) == old_clk_pin_ff_names.end())
@@ -1685,7 +1708,7 @@ void write_ff_placing_map_to_file(ofstream & outfile)
 
 int main()
 {
-    string file_name = "testcase0.txt";
+    string file_name = "testcase1.txt";
     ifstream file = openFile(file_name);
     readLines(file);
     cout << "Finish readLines" << endl;
@@ -1739,10 +1762,13 @@ int main()
     cout << "Done clustering!" << endl;
     // Placement_rows.print();
 
-    print_banking_clusters();
+    // print_banking_clusters();
+    cout << "Start placing_ff..." << endl;
     placing_ff();
 
-    ofstream outfile_output("output.txt");
+    string output_file_name = "output.txt";
+    ofstream outfile_output(output_file_name);
+    cout << "Start writing ff placing map to " << output_file_name << "..." << endl;
     write_ff_placing_map_to_file(outfile_output);
     
     return 0;
