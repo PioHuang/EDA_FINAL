@@ -20,6 +20,7 @@
 #include <sstream>   // 确保包含 <sstream> 头文件
 #include <algorithm> // 包含 std::find, 用來vector find
 #include <unordered_map>
+#include <unordered_set>
 using namespace std;
 
 //////////////variable initialization////////////////////////////////////////////////////////////////
@@ -32,8 +33,10 @@ double Displacement_delay;
 
 double k_spring = 0.05;
 int spring_iter_limit = 100;
-double spring_improvement_ratio_threshold = 0.0000001; // During spring iteration, if the improvement ratio is less than this threshold, then the spring iteration immediately stops.
-double damping_coefficient = 0.3;                      // v' = v * damping_coefficient + F/m * dt
+double spring_improvement_ratio_threshold = 0.001; // During spring iteration, if the improvement ratio is less than this threshold, then the spring iteration immediately stops.
+double damping_coefficient = 0.3;                  // v' = v * damping_coefficient + F/m * dt
+int max_FF_bits = -1;                              // The maximum bits of a FlipFlop. The value will be updated in the program.
+string ff_names_prefix = "WoJiuLan";
 
 struct Pin
 {
@@ -246,18 +249,27 @@ public:
         }
     }
 
+    void AddPlacementPoints(double x, double y, double w, double h, int num)
+    {
+        for (int i = 0; i < num; i++)
+        {
+            placement_points.push_back(make_pair(x + i * w, y));
+        }
+    }
+
     void print()
     {
         cout << "Placement Rows: \n";
-        for (int i = 0; i < placementrows.size(); i++)
+        for (const auto &placement_point : placement_points)
         {
-            for (int j = 0; j < placementrows[i].size(); j++)
-                cout << " x = " << placementrows[i][j].x << " y = " << placementrows[i][j].y << " ; ";
-            cout << endl;
+            double x = placement_point.first;
+            double y = placement_point.second;
+            cout << "x = " << x << ", y = " << y << endl;
         }
     }
 
     vector<vector<Row>> placementrows;
+    vector<pair<double, double>> placement_points;
 };
 
 Bin_Map *Bin_map;
@@ -277,7 +289,13 @@ public:
     }
 
     FlipFlop(string &name, double w, double h, int b, int pin_num)
-        : name(name), width(w), height(h), bits(b), pin_num(pin_num), power(0), q_delay(0) {}
+        : name(name), width(w), height(h), bits(b), pin_num(pin_num), power(0), q_delay(0)
+    {
+        if (b > max_FF_bits)
+        {
+            max_FF_bits = b;
+        }
+    }
 
     void AddPin(string pin_name, Pin *pin)
     {
@@ -355,6 +373,33 @@ public:
 
 unordered_map<string, FlipFlop> fflib;
 unordered_map<string, Gate> gatelib;
+
+unordered_map<int, string> best_FF;
+void update_best_FF(FlipFlop &ff)
+{
+    if (best_FF.find(ff.bits) == best_FF.end())
+    {
+        best_FF[ff.bits] = ff.name;
+    }
+    else
+    {
+        string old_ff = best_FF[ff.bits];
+        double old_score = Beta * fflib[old_ff].power + Gamma * fflib[old_ff].width * fflib[old_ff].height;
+        double new_score = Beta * ff.power + Gamma * ff.width * ff.height;
+        if (new_score > old_score)
+        {
+            best_FF[ff.bits] = ff.name;
+        }
+    }
+}
+void print_best_FF()
+{
+    cout << "Best FF:" << endl;
+    for (auto it = best_FF.begin(); it != best_FF.end(); it++)
+    {
+        cout << "Bits = " << it->first << ", FF = " << it->second << endl;
+    }
+}
 
 //----------------------------------------------------------------
 // Instances and Nets :(
@@ -505,13 +550,14 @@ unordered_map<string, Net *> Net_map;
 struct Signal
 {
     string signal_name;
+    string ff_name;
     Pin *d_pin;
     Pin *q_pin;
     Net *q_net;
     Pin *clk_pin;
 
-    Signal(string name, Pin *d, Pin *q, Pin *clk)
-        : signal_name(name), d_pin(d), q_pin(q), clk_pin(clk)
+    Signal(string name, string ff_name, Pin *d, Pin *q, Pin *clk)
+        : signal_name(name), ff_name(ff_name), d_pin(d), q_pin(q), clk_pin(clk)
     {
         q_net = Net_map[q->net_name];
     }
@@ -565,7 +611,7 @@ void initialize_Signal_map()
 
                 // Construct the signal
                 string signal_name = instf->name + "/" + d_pin->name + "_" + instf->name + "/" + q_pin->name;
-                Signal *signal = new Signal(signal_name, d_pin, q_pin, clk_pin);
+                Signal *signal = new Signal(signal_name, instf->name, d_pin, q_pin, clk_pin);
                 Signal_map[signal_name] = signal;
             }
         }
@@ -1000,6 +1046,7 @@ void readLines(ifstream &file)
                 ff.AddPin(pin_name, pin_ptr);
             }
             fflib[name] = ff;
+            update_best_FF(ff);
         }
         else if (keyword == "Gate")
         {
@@ -1132,7 +1179,7 @@ void readLines(ifstream &file)
             double startX, startY, siteWidth, siteHeight;
             int totalNumOfSites;
             iss >> startX >> startY >> siteWidth >> siteHeight >> totalNumOfSites;
-            Placement_rows.AddRow(startX, startY, siteWidth, siteHeight, totalNumOfSites);
+            Placement_rows.AddPlacementPoints(startX, startY, siteWidth, siteHeight, totalNumOfSites);
         }
         else if (keyword == "DisplacementDelay")
         {
@@ -1248,6 +1295,7 @@ struct Point
     vector<SpringNode *> cluster_members; // 指向所有cluster members
     int cluster = -1;
     int cluster_size = 0;
+    string ff_name = "";
 };
 
 double MD(const SpringNode &a, const Point &b)
@@ -1468,6 +1516,234 @@ void Classification()
     }
 }
 
+vector<Point> banking_clusters; // stores all cluster information here
+void update_banking_clusters(vector<Point> &clusters)
+{
+    for (const auto &center : clusters)
+    {
+        if (center.cluster_size > 0)
+        {
+            banking_clusters.push_back(center);
+            if (center.cluster_size > 4)
+            {
+                cout << "cluster size: " << center.cluster_size << endl;
+            }
+        }
+    }
+}
+
+void write_clusters_to_file(vector<Point> &clusters, ofstream &outfile)
+{
+    for (const auto &center : clusters)
+    {
+        if (center.cluster_size > 0)
+        {
+            outfile << "Center=";
+            outfile << "(" << center.x << "," << center.y << "); ";
+            for (const auto &member : center.cluster_members)
+            {
+                outfile << member->springnode_name << ": (" << SpringNode_map[member->springnode_name]->x << ", " << SpringNode_map[member->springnode_name]->y << ") ";
+            }
+            outfile << endl;
+        }
+    }
+    outfile << "----------" << endl;
+}
+void print_banking_clusters()
+{
+    cout << "Printing Banking clusters:" << endl;
+    for (auto &center : banking_clusters)
+    {
+        for (auto &member : center.cluster_members)
+        {
+            cout << member->springnode_name << " ";
+        }
+        cout << endl;
+    }
+}
+
+vector<string> find_best_combination(int desired_bits)
+{
+    vector<size_t> dp(desired_bits + 1, INT_MAX);
+    vector<vector<string>> solution(desired_bits + 1);
+    dp[0] = 0;
+
+    for (const auto &[bit_num, ffs] : priority_map) // bit num -> ff vector
+    {
+        for (int current_bits = desired_bits; current_bits >= bit_num; current_bits--)
+        {
+            for (const auto &[cost, name] : ffs)
+            {
+                if (dp[current_bits - bit_num] != INT_MAX && dp[current_bits - bit_num] + cost < dp[current_bits])
+                {
+                    dp[current_bits] = dp[current_bits - bit_num] + cost;
+                    solution[current_bits] = solution[current_bits - bit_num];
+                    solution[current_bits].push_back(name);
+                }
+            }
+        }
+    }
+
+    if (dp[desired_bits] == INT_MAX)
+    {
+        return {};
+    }
+
+    return solution[desired_bits];
+}
+
+unordered_map<string, InstanceF *> ff_placing_map;
+unordered_map<int, vector<string>> best_ff_combinations;
+
+void placing_ff()
+{
+    int ff_placing_index = 1;
+    int center_count = 0;
+    bool print_out_center = false;
+    for (int bit = 1; bit <= max_FF_bits; bit++)
+    {
+        vector<string> best_ff_combination = find_best_combination(bit);
+        best_ff_combinations[bit] = best_ff_combination;
+    }
+    for (int bit = 1; bit <= max_FF_bits; bit++)
+    {
+        cout << bit << " bit(s) selection: ";
+        for (int member = 0; member < best_ff_combinations[bit].size(); member++)
+            cout << best_ff_combinations[bit][member] << " ";
+        cout << endl;
+    }
+    for (auto &center : banking_clusters)
+    {
+        center_count += 1;
+        if (center_count % 100 == 0)
+        {
+            print_out_center = true;
+        }
+        else
+        {
+            print_out_center = false;
+        }
+        int bits = center.cluster_members.size();
+        string ff_type;
+        if (best_ff_combinations.find(bits) == best_ff_combinations.end())
+        {
+            if (print_out_center)
+            {
+                cout << "Center count = " << center_count << endl;
+                cout << "No flip-flops with " << bits << " bits." << endl;
+            }
+            continue;
+            // this should not happen
+        }
+        else
+        {
+            if (print_out_center)
+            {
+                cout << "Center count = " << center_count << endl;
+                cout << "Found flip-flops with " << bits << " bits." << endl;
+            }
+            for (int j = 0; j < best_ff_combinations[bits].size(); j++)
+            {
+                string ff_name = ff_names_prefix + to_string(ff_placing_index);
+                center.ff_name = ff_name;
+                ff_type = best_ff_combinations[bits][j];
+                // Start finding a location for the flip-flop
+                double ideal_x = center.x;
+                double ideal_y = center.y;
+                double current_x = Placement_rows.placement_points[0].first;
+                double current_y = Placement_rows.placement_points[0].second;
+                double current_d = abs(ideal_x - current_x) + abs(ideal_y - current_y);
+                for (auto &placement_point : Placement_rows.placement_points)
+                {
+                    double x = placement_point.first;
+                    double y = placement_point.second;
+                    double d = abs(ideal_x - x) + abs(ideal_y - y);
+                    if (d < current_d)
+                    {
+                        current_x = x;
+                        current_y = y;
+                        current_d = d;
+                    }
+                }
+                // Finish finding a location for the flip-flop
+                InstanceF *ff = new InstanceF(ff_name, ff_type, current_x, current_y);
+                ff_placing_map[ff_name] = ff;
+                ff_placing_index += 1;
+            }
+        }
+    }
+}
+
+void write_ff_placing_map_to_file(ofstream &outfile)
+{
+    // TODO
+    outfile << "CellInst " << ff_placing_map.size() << endl;
+    for (auto &it : ff_placing_map)
+    {
+        string ff_name = it.first;
+        InstanceF *ff = it.second;
+        outfile << fixed << "Inst " << ff_name << " " << ff->instance_type << " " << ff->x1 << " " << ff->y1 << endl;
+    }
+    for (auto &center : banking_clusters)
+    {
+        // Start writing the mapping of the pins to the output file
+        // Part 0 : prerequisites
+        // Start identifying the signals of the new FF
+        string new_ff_name = center.ff_name;
+        FlipFlop *instance_ff = ff_placing_map[center.ff_name]->instance_ff;
+        vector<pair<string, string>> new_dq_pin_name;
+        string new_clk_pin_name;
+        for (auto it = instance_ff->pins.begin(); it != instance_ff->pins.end(); it++)
+        {
+            Pin *pin = it->second;
+            if (pin->name[0] == 'D')
+            { // We find a signal!
+                string pin_idx = (pin->name).substr(1, (pin->name).length() - 1);
+                string d_pin_name = new_ff_name + "/" + "D" + pin_idx;
+                string q_pin_name = new_ff_name + "/" + "Q" + pin_idx;
+                new_dq_pin_name.push_back(make_pair(d_pin_name, q_pin_name));
+            }
+            else if (pin->name[0] == 'C' || pin->name[0] == 'c')
+            {
+                new_clk_pin_name = new_ff_name + "/" + pin->name;
+            }
+        }
+        // Finish identifying the signals of the FF
+
+        // Part 1 : D/Q pins
+        int dq_pin_count = 0;
+        unordered_set<string> old_clk_pin_ff_names;
+        for (auto &member : center.cluster_members)
+        {
+            string old_ff_name = member->signal->ff_name;
+            string old_d_pin_pin_name = member->signal->d_pin->name;
+            string old_q_pin_pin_name = member->signal->q_pin->name;
+            string old_d_pin_name = old_ff_name + "/" + old_d_pin_pin_name;
+            string old_q_pin_name = old_ff_name + "/" + old_q_pin_pin_name;
+            string old_clk_pin_pin_name = member->signal->clk_pin->name;
+
+            if (dq_pin_count < new_dq_pin_name.size())
+            {
+                outfile << old_d_pin_name << " map " << new_dq_pin_name[dq_pin_count].first << endl;
+                outfile << old_q_pin_name << " map " << new_dq_pin_name[dq_pin_count].second << endl;
+                dq_pin_count += 1;
+            }
+            else
+            {
+                // cout << "ERROR: dq_pin_count < new_dq_pin_name.size()" << endl;
+            }
+
+            if (old_clk_pin_ff_names.find(old_ff_name) == old_clk_pin_ff_names.end())
+            {
+                string old_clk_pin_name = old_ff_name + "/" + old_clk_pin_pin_name;
+                outfile << old_clk_pin_name << " map " << new_clk_pin_name << endl;
+
+                old_clk_pin_ff_names.insert(old_ff_name);
+            }
+        }
+    }
+}
+
 //----------------------------------------------------------------
 // main
 //----------------------------------------------------------------
@@ -1500,9 +1776,10 @@ int main()
     cout << "spring node number: " << SpringNode_map.size() << endl;
 
     // priority map formulation
-    // priority_map_formulation();
+    priority_map_formulation();
 
-    // clk map
+    cout << "done priority map formulation" << endl;
+
     Classification();
     /*for (auto &entry : clk_map)
     {
@@ -1516,27 +1793,27 @@ int main()
 
     // clustering
     cout << "Clustering..." << endl;
-    ofstream outfile("clusters.txt");
-    vector<Point> banking_clusters; // stores all cluster information here
+    cout << "max_FF_bits = " << max_FF_bits << endl;
+    print_best_FF();
+    ofstream outfile_cluster("clusters.txt");
     for (auto it = clk_map.begin(); it != clk_map.end(); it++)
     {
-        vector<Point> clusters = cluster_alg(2, 1000, it->second, 4, 10);
-        for (const auto &center : clusters)
-        {
-            if (center.cluster_size > 0)
-            {
-                banking_clusters.push_back(center);
-                outfile << "(" << center.x << ", " << center.y << "): ";
-                for (const auto &member : center.cluster_members)
-                {
-                    outfile << member->springnode_name << ": (" << SpringNode_map[member->springnode_name]->x << ", " << SpringNode_map[member->springnode_name]->y << ") ";
-                }
-                outfile << endl;
-                // outfile << center.x << " " << center.y << endl;
-            }
-        }
-        outfile << "----------" << endl;
+        vector<Point> clusters = cluster_alg(2, 1000, it->second, max_FF_bits, 10);
+        update_banking_clusters(clusters);
+        write_clusters_to_file(clusters, outfile_cluster);
     }
-    outfile.close();
+    outfile_cluster.close();
     cout << "Done clustering!" << endl;
+    // Placement_rows.print();
+
+    // print_banking_clusters();
+    cout << "Start placing_ff..." << endl;
+    placing_ff();
+
+    string output_file_name = "output.txt";
+    ofstream outfile_output(output_file_name);
+    cout << "Start writing ff placing map to " << output_file_name << "..." << endl;
+    write_ff_placing_map_to_file(outfile_output);
+
+    return 0;
 }

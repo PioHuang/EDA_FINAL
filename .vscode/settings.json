@@ -68,6 +68,7 @@
     "string_view": "cpp",
     "unordered_set": "cpp",
     "__bit_reference": "cpp",
-    "__node_handle": "cpp"
+    "__node_handle": "cpp",
+    "ostream": "cpp"
   }
 }
