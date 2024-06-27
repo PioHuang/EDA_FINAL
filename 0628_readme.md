@@ -8,7 +8,7 @@ To compile the `CAD_ProblemB.cpp` file into an executable named `CAD_ProblemB.ex
 g++ CAD_ProblemB.cpp -o CAD_ProblemB.exe
 ```
 
-This command tells the g++ compiler to compile the CAD_ProblemB.cpp source file and produce an executable file named CAD_ProblemB.exe.
+This command tells the g++ compiler to compile the `CAD_ProblemB.cpp` source file and produce an executable file named `CAD_ProblemB.exe`.
 
 ## Part 2: Running the `CAD_ProblemB.exe` File
 
