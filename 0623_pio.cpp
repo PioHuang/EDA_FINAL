@@ -1561,30 +1561,30 @@ void print_banking_clusters()
         cout << endl;
     }
 }
-
+int MAX = numeric_limits<int>::max();
 vector<string> find_best_combination(int desired_bits)
 {
-    vector<size_t> dp(desired_bits + 1, INT_MAX);
+    vector<size_t> dp(desired_bits + 1, MAX);
     vector<vector<string>> solution(desired_bits + 1);
     dp[0] = 0;
 
-    for (const auto &[bit_num, ffs] : priority_map) // bit num -> ff vector
+    for (auto i = priority_map.begin(); i != priority_map.end(); i++) // bit num -> ff vector
     {
-        for (int current_bits = desired_bits; current_bits >= bit_num; current_bits--)
+        for (int current_bits = desired_bits; current_bits >= i->first; current_bits--)
         {
-            for (const auto &[cost, name] : ffs)
+            for (auto ff : i->second)
             {
-                if (dp[current_bits - bit_num] != INT_MAX && dp[current_bits - bit_num] + cost < dp[current_bits])
+                if (dp[current_bits - i->first] != MAX && dp[current_bits - i->first] + ff.first < dp[current_bits])
                 {
-                    dp[current_bits] = dp[current_bits - bit_num] + cost;
-                    solution[current_bits] = solution[current_bits - bit_num];
-                    solution[current_bits].push_back(name);
+                    dp[current_bits] = dp[current_bits - i->first] + ff.first;
+                    solution[current_bits] = solution[current_bits - i->first];
+                    solution[current_bits].push_back(ff.second);
                 }
             }
         }
     }
 
-    if (dp[desired_bits] == INT_MAX)
+    if (dp[desired_bits] == MAX)
     {
         return {};
     }
