@@ -1,0 +1,74 @@
+int main(int argc, char* argv[])
+{
+    if (argc != 3) {
+        std::cerr << "Usage: " << argv[0] << " <input file> <output file>" << std::endl;
+        return 1;
+    }
+
+    string inputFile_name = argv[1];
+    string outputFile_name = argv[2];
+    // string file_name = "testcase1.txt";
+    ifstream file = openFile(inputFile_name);
+    readLines(file);
+    cout << "Finish readLines" << endl;
+    Put_Inst_Gate_to_Bin();
+    // cout << "-----------------------------------------------\n";
+    // Bin_map->print();
+    // input_check();
+
+    initialize_Signal_map();
+    cout << "Done initialize_Signal_map" << endl;
+    // check_Signal_map();
+
+    initialize_SpringNode_map();
+    cout << "Done initialize_SpringNode_map" << endl;
+
+    initialize_adj_list();
+    cout << "Done initialize_adj_list" << endl;
+    // check_SpringNode_map();
+
+    // 彈簧，啟動！
+    activate_Spring_n_iterations(spring_iter_limit, spring_improvement_ratio_threshold);
+
+    cout << "spring node number: " << SpringNode_map.size() << endl;
+
+    // priority map formulation
+    // priority_map_formulation();
+
+    Classification();
+    /*for (auto &entry : clk_map)
+    {
+        cout << entry.first << ": ";
+        for (auto &node : entry.second)
+        {
+            cout << node.first << " ";
+        }
+        cout << endl;
+    }*/
+
+    // clustering
+    cout << "Clustering..." << endl;
+    cout << "max_FF_bits = " << max_FF_bits << endl;
+    print_best_FF();
+    ofstream outfile_cluster("clusters.txt");
+    for (auto it = clk_map.begin(); it != clk_map.end(); it++)
+    {
+        vector<Point> clusters = cluster_alg(2, 1000, it->second, max_FF_bits, 10);
+        update_banking_clusters(clusters);
+        write_clusters_to_file(clusters, outfile_cluster);
+    }
+    outfile_cluster.close();
+    cout << "Done clustering!" << endl;
+    // Placement_rows.print();
+
+    // print_banking_clusters();
+    cout << "Start placing_ff..." << endl;
+    placing_ff();
+
+    // string output_file_name = "output.txt";
+    ofstream outfile_output(outputFile_name);
+    cout << "Start writing ff placing map to " << outputFile_name << "..." << endl;
+    write_ff_placing_map_to_file(outfile_output);
+    
+    return 0;
+}
