@@ -1,0 +1,13 @@
+CellInst 3
+Inst WoJiuLan3 FF1 22.000000 20.000000
+Inst WoJiuLan2 FF1 22.000000 10.000000
+Inst WoJiuLan1 FF1 16.000000 10.000000
+C1/D map WoJiuLan1/D
+C1/Q map WoJiuLan1/Q
+C1/CLK map WoJiuLan1/CLK
+C2/D map WoJiuLan2/D
+C2/Q map WoJiuLan2/Q
+C2/CLK map WoJiuLan2/CLK
+C3/D map WoJiuLan3/D
+C3/Q map WoJiuLan3/Q
+C3/CLK map WoJiuLan3/CLK
